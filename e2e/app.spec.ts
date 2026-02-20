@@ -56,4 +56,25 @@ test.describe('Marko Pollo E2E', () => {
     await page.goBack()
     await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
   })
+
+  test('Ctrl+S downloads presentation as .md', async ({ page }) => {
+    await page.goto('/#deck/default/0')
+    // Wait for presentation to load
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.keyboard.press('Control+s'),
+    ])
+    expect(download.suggestedFilename()).toMatch(/\.md$/)
+  })
+
+  test('Ctrl+S works from editor view', async ({ page }) => {
+    await page.goto('/#deck/default/editor')
+    await expect(page.locator('.cm-editor')).toBeVisible()
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.keyboard.press('Control+s'),
+    ])
+    expect(download.suggestedFilename()).toMatch(/\.md$/)
+  })
 })
