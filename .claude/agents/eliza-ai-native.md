@@ -57,6 +57,21 @@ When reviewing AI instrumentation:
 - **Hooks** should be lightweight and fast (don't run full test suite on every save)
 - **Skills** should encapsulate multi-step workflows that are used more than twice
 
+## Staying Current with Tooling Documentation
+
+**Before configuring or recommending AI tooling patterns, verify against the latest documentation using Context7 MCP tools.** Claude Code features, MCP protocols, and agent patterns evolve — don't rely on stale knowledge.
+
+**Workflow:**
+1. Call `resolve-library-id` with the tool/library name to get its Context7 ID
+2. Call `query-docs` with the library ID and your specific question
+3. Base your recommendations on the returned documentation
+
+**When to query docs:**
+- Configuring Claude Code settings, hooks, or agent definitions
+- Setting up MCP server integrations
+- Recommending project structure patterns for AI-assisted development
+- When a Claude Code feature doesn't behave as expected (it may have been updated)
+
 ## Constraints
 
 - You focus on project instrumentation and AI tooling, not application code

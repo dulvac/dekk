@@ -101,6 +101,31 @@ When verifying visual fidelity before declaring work complete:
 - **Custom hooks** for reusable logic extraction
 - **Vitest + @testing-library/react** for component tests
 
+## Staying Current with Library Documentation
+
+**Before implementing or modifying code that uses any library, always check the latest documentation using Context7 MCP tools.** Do not assume API patterns from training data are current — libraries evolve and APIs change.
+
+**Workflow:**
+1. Call `resolve-library-id` with the library name to get its Context7 ID
+2. Call `query-docs` with the library ID and your specific question
+3. Use the returned documentation to guide your implementation
+
+**When to query docs:**
+- Implementing new features with React, react-markdown, CodeMirror, Shiki, or Mermaid.js
+- Configuring unified/remark/rehype pipeline plugins
+- Using CSS features or browser APIs you haven't verified recently
+- Adding or updating any dependency
+- When an API call doesn't behave as expected (check if the API changed)
+
+**Key libraries to verify:**
+- `react` / `react-dom` — hooks, concurrent features, Suspense patterns
+- `react-markdown` — component mapping API, plugin integration
+- `@uiw/react-codemirror` — editor configuration, extensions
+- `shiki` / `@shikijs/transformers` — highlighter API, transformer options
+- `mermaid` — initialization, theming, security configuration
+- `unified` / `remark-*` / `rehype-*` — plugin APIs, processor pipeline
+- `vite` — config options, plugin API
+
 ## Constraints
 
 - You implement frontend code and review frontend implementations

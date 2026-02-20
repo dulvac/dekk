@@ -280,6 +280,117 @@ This phase was a perfect example of the delegation pattern working as intended:
 
 ---
 
+## 2026-02-20 — Full AI Instrumentation Review (Entry #5)
+
+**What happened:** Eliza performed a comprehensive audit of all AI instrumentation — CLAUDE.md, all 5 agent definitions, 3 slash commands, settings.json, and the AI journal — to evaluate whether the project's AI tooling is effective, complete, and ready for continued development.
+
+**Agent involved:** Eliza (AI-native specialist)
+
+**Files reviewed:**
+- `CLAUDE.md` (155 lines)
+- `.claude/agents/` — all 5 definitions (ada-architect.md, rex-frontend.md, sage-security.md, turing-qa.md, eliza-ai-native.md)
+- `.claude/commands/` — team-review.md, review-docs.md, implement-task.md
+- `.claude/settings.json`
+- `docs/ai-journal.md` (this file, 4 prior entries)
+
+### Findings (10 items, rated by severity)
+
+**1. HIGH: /team-review command doesn't enforce team infrastructure**
+The command says "spawn the following agents as a team" but doesn't specify using `team_name: "marko-pollo"`. This could lead to the exact anti-pattern documented in CLAUDE.md #5 (spawning standalone agents outside the team). The command should explicitly state that all agents must be spawned via the team infrastructure.
+
+**2. MEDIUM: CLAUDE.md at 155 lines, exceeds self-imposed 100-line guideline**
+Eliza's own constraint says "keep CLAUDE.md under 100 lines." The team workflow section (lines 74-155) adds 80+ lines. This content is genuinely valuable — it prevents real anti-patterns — but bloats context for every session. Consider extracting team workflow rules to a dedicated file (e.g., `.claude/TEAM_WORKFLOW.md`) and keeping CLAUDE.md as a concise reference.
+
+**3. MEDIUM: No project hooks configured**
+The `.claude/hooks/` directory doesn't exist. Settings.json only has permission allowlists, no hooks. Eliza's responsibilities include "Hook Configuration" for quality gates, but none have been implemented. Candidates: pre-commit type-check (`npx tsc --noEmit`), pre-push test run.
+
+**4. MEDIUM: Settings.json permissions missing E2E test commands**
+The allowlist includes `npm run test:run` and `npx vitest run*` but not `npx playwright*` or `npx tsc*`. Turing needs Playwright for E2E testing (a core responsibility), and type-checking should be an allowed operation.
+
+**5. MEDIUM: No documented procedure for agent turn-limit recovery**
+Journal Entry #2 records Rex hitting a turn limit during Phase 1, with the team lead incorrectly taking over implementation. The anti-pattern was documented, but there's no standard operating procedure for "agent runs out of turns." Recommended SOP: dispatch a new instance of the same agent with a summary of what was completed and what remains.
+
+**6. MEDIUM: AI journal not listed in CLAUDE.md Key Documents**
+The "Key Documents" section lists only the design doc and implementation plan. The journal (`docs/ai-journal.md`) is critical for session continuity but is only referenced in Eliza's agent definition. A new session might not discover the journal unless they explore the docs/ directory or read Eliza's definition.
+
+**7. LOW: No custom skills for common workflows**
+Eliza's responsibilities include "Skills Suggestions" but no reusable skills have been created. Candidate workflows: "verify-build" (build + check output size + report), "full-test" (vitest + playwright + visual check). These are used frequently enough to warrant formalization.
+
+**8. LOW: /implement-task runs in isolated single-agent mode**
+The command restricts `allowed-tools` to Bash, Read, Write, Edit, Glob, Grep — excluding Task and SendMessage. This means an agent running `/implement-task 7` can't delegate sub-work or communicate with the team. This is intentional for focused implementation but should be documented as "single-agent mode, no team coordination."
+
+**9. LOW: Agent definitions don't reference team config location**
+Agents spawned into the team should know where to find team info (`~/.claude/teams/marko-pollo/config.json`), but their definition files don't mention this. This matters for agents that might need to discover or message other teammates.
+
+**10. LOW: Journal project structure section can go stale**
+The "AI-Native Project Structure" file tree at the bottom of this journal is a manual snapshot. If new files are added (hooks, skills, new agents), this section becomes inaccurate. Consider either removing it (since `CLAUDE.md` serves the same purpose) or marking it as "last updated: [date]."
+
+### Overall Assessment
+
+The AI instrumentation is **strong**. This project is one of the better-instrumented Claude Code projects based on these observations:
+
+- **CLAUDE.md** provides comprehensive context — a new session can be productive immediately
+- **All 5 agents** are defined with clear, non-overlapping responsibilities and explicit constraints
+- **Anti-patterns** are documented with WRONG/RIGHT examples drawn from real incidents
+- **The journal** captures honest retrospectives including failures, not just successes
+- **Visual testing requirements** are thoroughly documented after the Entry #3 lesson
+- **Brand identity** is captured in a quick-reference table
+- **Session continuity** is strong — between CLAUDE.md, agent definitions, and the journal, a new session can reconstruct full project history
+
+The 1 HIGH and 5 MEDIUM findings are all addressable improvements, not fundamental problems. The team workflow is mature and the delegation pattern is well-established.
+
+**Outcome:** 10 findings documented. 1 HIGH (command/team mismatch), 5 MEDIUM (mostly around missing configurations and documentation gaps), 4 LOW (nice-to-haves). The project's AI instrumentation is production-grade with room for incremental improvement.
+
+---
+
+## 2026-02-20 — "Stay Current" Agent Instructions & Command Fix (Entry #6)
+
+**What happened:** Following the Entry #5 instrumentation review, Eliza implemented two of the recommended improvements: adding "Staying Current with Library Documentation" instructions to all 5 agent definitions, and fixing the HIGH-severity finding about the `/team-review` command not enforcing team infrastructure.
+
+**Agent involved:** Eliza (AI-native specialist)
+
+**The problem being solved:** AI agents rely on training data for library API knowledge, but libraries evolve. An agent might implement code using a deprecated API, an old configuration pattern, or a removed feature. The project uses 10+ libraries (React, Shiki, Mermaid, CodeMirror, unified/remark, Vitest, Playwright, etc.) — any of which could have breaking changes between the agent's training cutoff and the current date.
+
+**The solution:** Each agent now has a "Staying Current" section instructing them to use the Context7 MCP tools (`resolve-library-id` + `query-docs`) to check latest documentation before implementing features with any library. The instructions are tailored to each agent's domain:
+
+| Agent | Libraries to verify |
+|-------|-------------------|
+| Rex | React, react-markdown, CodeMirror, Shiki, Mermaid, unified/remark/rehype, Vite |
+| Turing | Vitest, @testing-library/react, Playwright, GitHub Actions |
+| Ada | TypeScript, Vite, React (architecture patterns) |
+| Sage | rehype-sanitize, Mermaid security, Shiki output safety, DOMPurify |
+| Eliza | Claude Code configuration, MCP protocols |
+
+**Each section includes:**
+1. The 2-step workflow: `resolve-library-id` then `query-docs`
+2. Specific triggers for when to check docs (not "always" — targeted to moments where stale knowledge is risky)
+3. A library checklist specific to the agent's domain
+
+**Command fix:** The `/team-review` command was updated to explicitly require `team_name: "marko-pollo"` with a CRITICAL warning, agent `name` parameters listed for each team member, and a reminder to use `TaskCreate` for tracking. This directly addresses the HIGH finding from Entry #5.
+
+**Files modified (7 total):**
+- `.claude/agents/rex-frontend.md` — Added "Staying Current" section with 7 key libraries
+- `.claude/agents/turing-qa.md` — Added "Staying Current" section with 4 key libraries
+- `.claude/agents/ada-architect.md` — Added "Staying Current" section with 3 key libraries
+- `.claude/agents/sage-security.md` — Added "Staying Current" section with 5 key libraries
+- `.claude/agents/eliza-ai-native.md` — Added "Staying Current" section with Claude Code tooling
+- `.claude/commands/team-review.md` — Enforced team infrastructure with explicit names and CRITICAL warning
+- `docs/ai-journal.md` — This entry
+
+**Design decision:** The instructions are placed just before the "Constraints" section in each agent file, so they're near the end of the definition but before the hard rules. This placement ensures agents read them during setup but don't treat them as higher priority than their core responsibilities.
+
+**Remaining Entry #5 findings not yet addressed:**
+- MEDIUM: CLAUDE.md at 155 lines (consider extracting team workflow)
+- MEDIUM: No project hooks configured
+- MEDIUM: Settings.json missing Playwright/tsc permissions
+- MEDIUM: No agent turn-limit recovery SOP
+- MEDIUM: AI journal not in CLAUDE.md Key Documents
+- LOW: No custom skills, /implement-task single-agent mode, agent team config reference, stale file tree
+
+**Outcome:** All 5 agents now have documented instructions to verify library documentation before coding. The `/team-review` command enforces team infrastructure. The HIGH finding from Entry #5 is resolved.
+
+---
+
 ## AI-Native Project Structure
 
 ```

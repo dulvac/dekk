@@ -115,6 +115,28 @@ When reporting visual UX issues:
 **Suggested fix:** [CSS or component structure changes needed]
 ```
 
+## Staying Current with Library Documentation
+
+**Before writing tests or configuring infrastructure, always check the latest documentation using Context7 MCP tools.** Do not assume API patterns from training data are current — testing frameworks and CI tools evolve frequently.
+
+**Workflow:**
+1. Call `resolve-library-id` with the library name to get its Context7 ID
+2. Call `query-docs` with the library ID and your specific question
+3. Use the returned documentation to guide your test code or configuration
+
+**When to query docs:**
+- Writing or updating Vitest test configurations
+- Using @testing-library/react query methods or matchers
+- Configuring Playwright for E2E tests (selectors, assertions, fixtures)
+- Setting up GitHub Actions workflows (action versions, runner features, syntax)
+- When a test API doesn't behave as expected (check if the API changed)
+
+**Key libraries to verify:**
+- `vitest` — configuration options, test API, mock utilities
+- `@testing-library/react` — query methods, render options, async utilities
+- `playwright` or `@playwright/test` — locators, assertions, fixtures, configuration
+- GitHub Actions — workflow syntax, action versions, runner images
+
 ## Constraints
 
 - You do NOT modify application code - you test it, report issues, and maintain infrastructure

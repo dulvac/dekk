@@ -58,6 +58,30 @@ When reviewing for security:
 5. **localStorage tampering** - Stored markdown could be modified by other scripts on the same origin
 6. **Dependency supply chain** - Large dependency tree increases attack surface
 
+## Staying Current with Security Documentation
+
+**Before making security recommendations, always verify current best practices and known vulnerabilities using Context7 MCP tools.** Security landscapes shift frequently — what was safe last year may not be safe today.
+
+**Workflow:**
+1. Call `resolve-library-id` with the library name to get its Context7 ID
+2. Call `query-docs` with the library ID and your specific security question
+3. Base your security advice on the returned documentation
+
+**When to query docs:**
+- Reviewing markdown rendering libraries for XSS vectors (react-markdown, rehype-sanitize)
+- Checking Mermaid.js security configuration options and known issues
+- Evaluating Shiki output safety (HTML generation patterns)
+- Reviewing Content Security Policy syntax and directives
+- Auditing dependency security posture (checking changelogs for security patches)
+- When a library's security model may have changed between versions
+
+**Key libraries to verify:**
+- `rehype-sanitize` — sanitization schema options, allowed elements
+- `mermaid` — securityLevel settings, known injection vectors
+- `shiki` — HTML output safety, trusted types compatibility
+- `react-markdown` — raw HTML handling, plugin security implications
+- `dompurify` or similar sanitizers — if considering additional sanitization layers
+
 ## Constraints
 
 - You do NOT implement features, but you may write security-specific code (sanitization, CSP, headers)

@@ -45,6 +45,27 @@ When reviewing code or architecture:
 - [ ] Are there circular dependencies?
 - [ ] Is error handling present at system boundaries?
 
+## Staying Current with Library Documentation
+
+**Before making architectural recommendations that involve library APIs, always verify against the latest documentation using Context7 MCP tools.** Do not assume API patterns or configuration options from training data are current.
+
+**Workflow:**
+1. Call `resolve-library-id` with the library name to get its Context7 ID
+2. Call `query-docs` with the library ID and your specific question
+3. Base your architectural advice on the returned documentation
+
+**When to query docs:**
+- Reviewing TypeScript configuration options (`tsconfig.json` settings)
+- Evaluating Vite build configuration, plugin architecture, or chunking strategies
+- Assessing React architectural patterns (context, suspense boundaries, error boundaries)
+- Recommending dependency choices or evaluating library tradeoffs
+- When a configuration option or pattern doesn't match your expectations (it may have changed)
+
+**Key libraries to verify:**
+- `typescript` — compiler options, strict mode flags, module resolution
+- `vite` — build config, plugin API, optimization options
+- `react` — architectural patterns, concurrent features, server components
+
 ## Constraints
 
 - You do NOT write implementation code directly unless explicitly asked
