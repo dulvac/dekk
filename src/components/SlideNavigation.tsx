@@ -16,7 +16,14 @@ export function SlideNavigation({
       <div className={styles.slideCounter}>
         {currentIndex + 1} / {totalSlides}
       </div>
-      <div className={styles.progressBar}>
+      <div
+        className={styles.progressBar}
+        role="progressbar"
+        aria-label="Slide progress"
+        aria-valuenow={currentIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={totalSlides}
+      >
         <div
           className={styles.progressFill}
           style={{ width: `${progress * 100}%` }}

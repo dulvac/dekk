@@ -15,6 +15,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--mp-content-gap);
+  font-size: var(--mp-body-size);
 }
 
 .scaleWrapper {
@@ -234,4 +235,102 @@
 
 .tableRow:nth-child(odd) .tableCell {
   background: rgba(255, 255, 255, 0.01);
+}
+
+/* Links */
+
+.link {
+  color: var(--mp-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--mp-transition-duration) var(--mp-transition-ease);
+}
+
+.link:hover {
+  border-bottom-color: var(--mp-secondary);
+}
+
+/* Strikethrough */
+
+.strikethrough {
+  color: var(--mp-muted);
+  text-decoration: line-through;
+}
+
+/* Blockquote */
+
+.blockquote {
+  border-left: 4px solid var(--mp-primary);
+  padding-left: 24px;
+  margin: 16px 0;
+  color: var(--mp-muted);
+  font-style: italic;
+  font-size: var(--mp-body-size);
+  line-height: 1.6;
+}
+
+/* Task list checkboxes */
+
+.taskListItem {
+  position: relative;
+  padding-left: 40px;
+  margin-bottom: 12px;
+  list-style: none;
+}
+
+.taskListItem input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--mp-muted);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color var(--mp-transition-duration) var(--mp-transition-ease),
+              border-color var(--mp-transition-duration) var(--mp-transition-ease);
+}
+
+.taskListItem input[type="checkbox"]:checked {
+  background-color: var(--mp-primary);
+  border-color: var(--mp-primary);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+  background-size: 14px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Headings h3-h6 */
+
+.h3 {
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--mp-text);
+  line-height: 1.3;
+}
+
+.h4 {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--mp-text);
+  line-height: 1.3;
+}
+
+.h5 {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--mp-muted);
+  line-height: 1.4;
+}
+
+.h6 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--mp-muted);
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
