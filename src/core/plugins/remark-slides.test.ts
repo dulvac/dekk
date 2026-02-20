@@ -6,7 +6,7 @@ import { remarkSlides, type SlideNode } from './remark-slides'
 function parseSlides(markdown: string): SlideNode[] {
   const processor = unified().use(remarkParse).use(remarkSlides)
   const tree = processor.runSync(processor.parse(markdown))
-  return tree.children as SlideNode[]
+  return tree.children as unknown as SlideNode[]
 }
 
 describe('remark-slides', () => {
