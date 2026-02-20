@@ -73,11 +73,23 @@ This project uses a team of specialized agents. See `.claude/agents/` for their 
 
 ## Team Workflow
 
+### Team Infrastructure
+
+This project uses a persistent agent team named `marko-pollo`. The team lead MUST use the team infrastructure for all work:
+
+- **Team name:** `marko-pollo`
+- **Spawn agents via:** `Task` tool with `team_name: "marko-pollo"` and `name: "<agent-name>"`
+- **Agent definitions:** `.claude/agents/` directory (rex-frontend.md, turing-qa.md, ada-architect.md, sage-security.md, eliza-ai-native.md)
+- **Task tracking:** Use TaskCreate/TaskUpdate/TaskList for all work items
+- **Communication:** Use SendMessage for agent coordination, NOT standalone Task agents
+
+**CRITICAL: Never spawn standalone Task agents outside the team.** All agents must be team members so their status (active/idle) is visible to the user and team coordination works properly. If you spawn a `general-purpose` agent without `team_name`, it bypasses the team — this is wrong.
+
 ### Team Lead Role (You)
 
 Your ONLY responsibilities as team lead are:
 1. **Coordinate** - Understand the user's request and plan the work
-2. **Dispatch** - Assign tasks to the appropriate specialist agent
+2. **Dispatch** - Spawn team agents with `team_name: "marko-pollo"` for tasks
 3. **Review** - Evaluate agent output for completeness and quality
 4. **Commit** - Create git commits after work is approved
 5. **Communicate** - Report progress and results to the user
@@ -111,7 +123,7 @@ Your ONLY responsibilities as team lead are:
 
 These mistakes have happened before. Learn from them:
 
-1. **Writing Phase 2/3 implementation code yourself**
+1. **Writing implementation code yourself**
    - WRONG: Team lead implements React components
    - RIGHT: Dispatch Rex to implement components
 
@@ -127,9 +139,10 @@ These mistakes have happened before. Learn from them:
    - WRONG: Team lead fixes code after Ada/Sage review
    - RIGHT: Dispatch Rex (or relevant specialist) to fix issues
 
-5. **Making security fixes yourself**
-   - WRONG: Team lead implements input sanitization
-   - RIGHT: Dispatch Sage to review, then Rex to implement fixes
+5. **Spawning standalone agents outside the team**
+   - WRONG: `Task` tool with just `subagent_type: "general-purpose"` (no team_name)
+   - RIGHT: `Task` tool with `team_name: "marko-pollo"` and `name: "Rex"` (or other agent name)
+   - Standalone agents bypass team visibility — the user can't see their status
 
 ### When Agents Report Back
 
