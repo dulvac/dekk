@@ -80,4 +80,27 @@ describe('slideReducer', () => {
     expect(state.slides).toHaveLength(0)
     expect(state.currentIndex).toBe(0)
   })
+
+  it('LOAD_DECK sets currentDeck and parses markdown', () => {
+    const state = slideReducer(initialState, {
+      type: 'LOAD_DECK',
+      deckId: 'my-talk',
+      markdown: '# Slide 1\n---\n# Slide 2',
+    })
+    expect(state.currentDeck).toBe('my-talk')
+    expect(state.slides).toHaveLength(2)
+    expect(state.currentIndex).toBe(0)
+  })
+
+  it('UNLOAD_DECK resets to initial state', () => {
+    const loaded = slideReducer(initialState, {
+      type: 'LOAD_DECK',
+      deckId: 'test',
+      markdown: '# Slide 1',
+    })
+    const unloaded = slideReducer(loaded, { type: 'UNLOAD_DECK' })
+    expect(unloaded.currentDeck).toBeNull()
+    expect(unloaded.slides).toEqual([])
+    expect(unloaded.rawMarkdown).toBe('')
+  })
 })
