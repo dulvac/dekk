@@ -15,6 +15,21 @@ vi.mock('../components/MarkdownEditor', () => ({
   ),
 }))
 
+// Mock persistence module
+vi.mock('../core/persistence', () => ({
+  detectEnvironment: vi.fn().mockResolvedValue('dev'),
+  saveToDevServer: vi.fn().mockResolvedValue(true),
+  saveToGitHub: vi.fn().mockResolvedValue({ prUrl: 'https://github.com/test/test/pull/1' }),
+  detectGitHubRepo: vi.fn().mockReturnValue({ owner: 'test', repo: 'test' }),
+}))
+
+// Mock token store
+vi.mock('../core/token-store', () => ({
+  hasToken: vi.fn().mockReturnValue(false),
+  getToken: vi.fn().mockReturnValue(null),
+  setToken: vi.fn(),
+}))
+
 function renderWithContext(ui: ReactElement, state: SlideState) {
   return render(
     <SlideContext.Provider value={state}>
@@ -48,6 +63,10 @@ describe('EditorView', () => {
 
     // Preview pane should show the slide content
     expect(screen.getByText('Test')).toBeInTheDocument()
+
+    // Save and Export buttons should exist
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument()
   })
 
   it('shows empty state message when no slides', () => {
