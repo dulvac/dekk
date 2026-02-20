@@ -31,7 +31,7 @@ describe('App', () => {
 
   it('renders PresentationView by default (empty hash)', async () => {
     const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
 
     render(<App />)
 
@@ -42,7 +42,7 @@ describe('App', () => {
 
   it('switches to editor view when hash is #editor', async () => {
     const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
 
     window.location.hash = '#editor'
     render(<App />)
@@ -54,7 +54,7 @@ describe('App', () => {
 
   it('switches to overview when hash is #overview', async () => {
     const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
 
     window.location.hash = '#overview'
     render(<App />)
@@ -67,7 +67,7 @@ describe('App', () => {
   it('loads markdown on mount', async () => {
     const { loadMarkdown } = await import('./core/loader')
     const mockMarkdown = '# Test Slide'
-    vi.mocked(loadMarkdown).mockResolvedValue(mockMarkdown)
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: mockMarkdown })
 
     render(<App />)
 
@@ -78,7 +78,7 @@ describe('App', () => {
 
   it('handles file drop for .md files', async () => {
     const { loadMarkdown, saveToLocalStorage } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
 
     render(<App />)
 
@@ -118,7 +118,7 @@ describe('App', () => {
 
   it('rejects file drop for non-markdown files', async () => {
     const { loadMarkdown, saveToLocalStorage } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
 
     render(<App />)
 
@@ -152,7 +152,7 @@ describe('App', () => {
 
   it('provides SlideContext to children', async () => {
     const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue('# Test Slide')
+    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '# Test Slide' })
 
     const { container } = render(<App />)
 

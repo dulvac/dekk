@@ -2,11 +2,12 @@ import defaultSlides from '../assets/slides.md?raw'
 
 export const STORAGE_KEY = 'marko-pollo-slides'
 
-export function saveToLocalStorage(markdown: string): void {
+export function saveToLocalStorage(markdown: string): boolean {
   try {
     localStorage.setItem(STORAGE_KEY, markdown)
+    return true
   } catch {
-    // Storage full or unavailable
+    return false
   }
 }
 
@@ -32,19 +33,26 @@ export function getDefaultSlides(): string {
   return defaultSlides
 }
 
-export async function loadMarkdown(): Promise<string> {
+export interface LoadResult {
+  markdown: string
+  sourceUrl?: string
+}
+
+export async function loadMarkdown(): Promise<LoadResult> {
   const stored = loadFromLocalStorage()
-  if (stored) return stored
+  if (stored) return { markdown: stored }
 
   const hash = window.location.hash
   const urlMatch = hash.match(/[?&]url=([^&]+)/)
   if (urlMatch) {
     try {
-      return await loadFromUrl(decodeURIComponent(urlMatch[1]))
+      const url = decodeURIComponent(urlMatch[1])
+      const markdown = await loadFromUrl(url)
+      return { markdown, sourceUrl: url }
     } catch {
       // Fall through to default
     }
   }
 
-  return getDefaultSlides()
+  return { markdown: getDefaultSlides() }
 }
