@@ -13,7 +13,7 @@ function isValidCSSColor(color: string | undefined): boolean {
   if (dangerous.test(color)) return false
 
   // Accept valid CSS color formats
-  const validColor = /^(#[0-9a-f]{3,8}|rgb\(|rgba\(|hsl\(|hsla\(|[a-z]+)$/i
+  const validColor = /^(#[0-9a-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z]+)$/i
   return validColor.test(color)
 }
 

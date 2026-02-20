@@ -57,7 +57,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
 
   return (
     <div className={styles.editor}>
-      <Suspense fallback={<div style={{ background: '#0B0D17', width: '100%', height: '100%' }} />}>
+      <Suspense fallback={<div style={{ background: 'var(--mp-bg)', width: '100%', height: '100%' }} />}>
         <CodeMirror
           value={value}
           height="100%"

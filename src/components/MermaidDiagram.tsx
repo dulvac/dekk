@@ -1,37 +1,35 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import styles from '../styles/slides.module.css'
 
-let mermaidInstance: typeof import('mermaid').default | null = null
-let mermaidInitialized = false
+let mermaidPromise: Promise<typeof import('mermaid').default> | null = null
 
-async function initMermaid() {
-  if (mermaidInitialized) return mermaidInstance!
-
-  const mermaid = await import('mermaid').then(m => m.default)
-  mermaidInstance = mermaid
-
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: 'base',
-    themeVariables: {
-      primaryColor: '#6C5CE7',
-      primaryTextColor: '#E8E8F0',
-      primaryBorderColor: '#6B7394',
-      lineColor: '#6B7394',
-      secondaryColor: '#00CEC9',
-      tertiaryColor: '#1A1E2E',
-      background: '#141829',
-      mainBkg: '#1A1E2E',
-      textColor: '#E8E8F0',
-      fontSize: '16px',
-      fontFamily: 'Inter, system-ui, sans-serif',
-    },
-    flowchart: { useMaxWidth: true, htmlLabels: false, curve: 'basis' },
-    sequence: { useMaxWidth: true },
-  })
-  mermaidInitialized = true
-  return mermaid
+function initMermaid() {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid').then(m => {
+      m.default.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#6C5CE7',
+          primaryTextColor: '#E8E8F0',
+          primaryBorderColor: '#6B7394',
+          lineColor: '#6B7394',
+          secondaryColor: '#00CEC9',
+          tertiaryColor: '#1A1E2E',
+          background: '#141829',
+          mainBkg: '#1A1E2E',
+          textColor: '#E8E8F0',
+          fontSize: '16px',
+          fontFamily: 'Inter, system-ui, sans-serif',
+        },
+        flowchart: { useMaxWidth: true, htmlLabels: false, curve: 'basis' },
+        sequence: { useMaxWidth: true },
+      })
+      return m.default
+    })
+  }
+  return mermaidPromise
 }
 
 interface MermaidDiagramProps {

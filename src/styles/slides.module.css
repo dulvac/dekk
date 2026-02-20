@@ -334,3 +334,26 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* Emphasis */
+
+.strong {
+  font-weight: 600;
+  color: var(--mp-text);
+}
+
+.em {
+  font-style: italic;
+  color: var(--mp-secondary);
+}
+
+/* Horizontal rule */
+
+.hr {
+  border: none;
+  height: 2px;
+  background: var(--mp-gradient);
+  margin: 32px 0;
+  border-radius: 1px;
+  opacity: 0.5;
+}

@@ -6,51 +6,33 @@ import {
   SlideDispatchContext,
 } from './core/store'
 import { createKeyboardHandler } from './core/keyboard'
-import { loadMarkdown, saveToLocalStorage } from './core/loader'
+import { loadMarkdown } from './core/loader'
+import { useHashRouting, useFileDrop } from './core/hooks'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 const PresentationView = lazy(() => import('./views/PresentationView').then(m => ({ default: m.PresentationView })))
 const EditorView = lazy(() => import('./views/EditorView').then(m => ({ default: m.EditorView })))
 const OverviewGrid = lazy(() => import('./views/OverviewGrid').then(m => ({ default: m.OverviewGrid })))
 
-type View = 'presentation' | 'editor' | 'overview'
-
-function getInitialView(): View {
-  const hash = window.location.hash.replace(/#\/?/, '').split('?')[0]
-  if (hash === 'editor') return 'editor'
-  if (hash === 'overview') return 'overview'
-  return 'presentation'
-}
-
 export default function App() {
   const [state, dispatch] = useReducer(slideReducer, initialState)
-  const [view, setView] = useState<View>(getInitialView)
+  const [view, setView] = useHashRouting()
+  const [externalUrl, setExternalUrl] = useState<string | null>(null)
+
+  useFileDrop(dispatch)
 
   // Load markdown on mount
   useEffect(() => {
     loadMarkdown()
-      .then((md) => {
-        dispatch({ type: 'SET_MARKDOWN', markdown: md })
+      .then((result) => {
+        dispatch({ type: 'SET_MARKDOWN', markdown: result.markdown })
+        if (result.sourceUrl) {
+          setExternalUrl(result.sourceUrl)
+        }
       })
       .catch((error) => {
         console.error('Failed to load markdown:', error)
-        // Fall back to empty state - user can open editor to add content
       })
-  }, [])
-
-  // Sync hash with view
-  useEffect(() => {
-    const hash = view === 'presentation' ? '' : view
-    window.location.hash = hash ? `#${hash}` : ''
-  }, [view])
-
-  // Listen for hash changes
-  useEffect(() => {
-    function onHashChange() {
-      setView(getInitialView())
-    }
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
   // Keyboard handler
@@ -87,50 +69,63 @@ export default function App() {
     })
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [view, state.slides.length])
-
-  // File drop handler
-  useEffect(() => {
-    function handleDragOver(e: DragEvent) {
-      e.preventDefault()
-    }
-    function handleDrop(e: DragEvent) {
-      e.preventDefault()
-      const file = e.dataTransfer?.files[0]
-      if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
-        file
-          .text()
-          .then((text) => {
-            dispatch({ type: 'SET_MARKDOWN', markdown: text })
-            saveToLocalStorage(text)
-          })
-          .catch((error) => {
-            console.error('Failed to read dropped file:', error)
-            // Silently ignore - user can try again or use editor
-          })
-      }
-    }
-    window.addEventListener('dragover', handleDragOver)
-    window.addEventListener('drop', handleDrop)
-    return () => {
-      window.removeEventListener('dragover', handleDragOver)
-      window.removeEventListener('drop', handleDrop)
-    }
-  }, [])
+  }, [view, setView, state.slides.length])
 
   const handleSelectSlide = useCallback(
     (index: number) => {
       dispatch({ type: 'GO_TO_SLIDE', index })
       setView('presentation')
     },
-    [dispatch]
+    [dispatch, setView]
   )
 
   return (
     <ErrorBoundary>
       <SlideContext.Provider value={state}>
         <SlideDispatchContext.Provider value={dispatch}>
-          <Suspense fallback={<div style={{ background: '#0B0D17', width: '100vw', height: '100vh' }} />}>
+          {externalUrl && (
+            <div
+              role="alert"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 9999,
+                padding: '8px 16px',
+                backgroundColor: 'var(--mp-code-bg)',
+                borderBottom: '2px solid var(--mp-primary)',
+                color: 'var(--mp-text)',
+                fontSize: '13px',
+                fontFamily: 'var(--mp-font-body)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>
+                External content loaded from:{' '}
+                <code style={{ color: 'var(--mp-secondary)', wordBreak: 'break-all' }}>{externalUrl}</code>
+              </span>
+              <button
+                onClick={() => setExternalUrl(null)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--mp-muted)',
+                  color: 'var(--mp-text)',
+                  padding: '2px 8px',
+                  cursor: 'pointer',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  marginLeft: '16px',
+                  flexShrink: 0,
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          <Suspense fallback={<div style={{ background: 'var(--mp-bg)', width: '100vw', height: '100vh' }} />}>
             {view === 'presentation' && <PresentationView />}
             {view === 'editor' && <EditorView />}
             {view === 'overview' && (

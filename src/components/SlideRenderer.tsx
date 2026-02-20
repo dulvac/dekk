@@ -54,6 +54,13 @@ const components: Components = {
   blockquote: ({ children, ...props }) => (
     <blockquote className={styles.blockquote} {...props}>{children}</blockquote>
   ),
+  strong: ({ children, ...props }) => (
+    <strong className={styles.strong} {...props}>{children}</strong>
+  ),
+  em: ({ children, ...props }) => (
+    <em className={styles.em} {...props}>{children}</em>
+  ),
+  hr: (props) => <hr className={styles.hr} {...props} />,
   table: ({ children, ...props }) => <Table {...props}>{children}</Table>,
   thead: ({ children, ...props }) => <TableHead {...props}>{children}</TableHead>,
   tr: ({ children, ...props }) => <TableRow {...props}>{children}</TableRow>,
