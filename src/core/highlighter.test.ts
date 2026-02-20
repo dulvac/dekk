@@ -12,4 +12,9 @@ describe('highlightCode', () => {
     const html = await highlightCode('hello', 'unknownlang')
     expect(html).toBeTruthy()
   })
+
+  it('handles empty string input', async () => {
+    const html = await highlightCode('', 'typescript')
+    expect(html).toBeDefined()
+  })
 })

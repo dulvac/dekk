@@ -145,9 +145,14 @@ describe('App', () => {
 
     window.dispatchEvent(dropEvent)
 
-    // saveToLocalStorage should not be called
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    expect(saveToLocalStorage).not.toHaveBeenCalled()
+    // saveToLocalStorage should not be called — use waitFor with a short timeout
+    // to give any async handlers time to execute, then assert negative
+    await waitFor(
+      () => {
+        expect(saveToLocalStorage).not.toHaveBeenCalled()
+      },
+      { timeout: 200 }
+    )
   })
 
   it('provides SlideContext to children', async () => {

@@ -64,6 +64,14 @@ describe('slideReducer', () => {
     expect(state.slides).toHaveLength(2)
   })
 
+  it('GO_TO_SLIDE clamps negative index to 0', () => {
+    const state = slideReducer(threeSlideState, {
+      type: 'GO_TO_SLIDE',
+      index: -1,
+    })
+    expect(state.currentIndex).toBe(0)
+  })
+
   it('SET_MARKDOWN with empty string produces no slides', () => {
     const state = slideReducer(threeSlideState, {
       type: 'SET_MARKDOWN',
