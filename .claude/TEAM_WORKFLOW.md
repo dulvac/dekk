@@ -79,6 +79,20 @@ These mistakes have happened before. Learn from them:
    - Include: files modified, tests passing/failing, next step in the plan
    - The new agent picks up where the previous one left off, maintaining code style consistency
 
+## Autonomous Fix Policy
+
+Act independently. Do not wait for user approval to dispatch fixes.
+
+- **CRITICAL and HIGH findings**: Dispatch fixes immediately after review. No user approval needed.
+- **Low-hanging fruit** (quick MEDIUM/LOW fixes): Bundle and dispatch alongside higher-priority items. Don't create separate approval cycles for easy wins.
+- **Only ask the user** when there is a genuine decision to make:
+  - Tradeoffs between approaches with meaningful consequences
+  - Changes that affect user-facing behavior or visual design
+  - Architectural choices with multiple valid options
+- **After reviews complete**: Automatically compile findings, dispatch fixes to the appropriate agents, and report progress. Do NOT present findings and wait for permission to act.
+
+**The pattern is:** Review → Dispatch fixes → Commit → Report what was done. Not: Review → Present findings → Wait → Ask permission → Dispatch.
+
 ## When Agents Report Back
 
 After an agent completes their task:
