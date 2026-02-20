@@ -14,6 +14,8 @@ export interface SlideNode {
   children: Content[]
   data?: {
     metadata?: SlideMetadata
+    startOffset?: number
+    endOffset?: number
   }
 }
 
@@ -46,17 +48,29 @@ export const remarkSlides: Plugin<[], Root> = function () {
   return function (tree: Root) {
     const slides: SlideNode[] = []
     let currentChildren: RootContent[] = []
+    let startOffset = 0
 
-    for (const node of tree.children) {
+    // Get the end position from the root tree
+    const treeEndOffset = tree.position?.end.offset ?? 0
+
+    for (let i = 0; i < tree.children.length; i++) {
+      const node = tree.children[i]
       if (node.type === 'thematicBreak') {
         if (currentChildren.length > 0) {
           const { metadata, remaining } = extractMetadata(currentChildren)
+          const endOffset = node.position?.start.offset ?? startOffset
           slides.push({
             type: 'slide',
             children: remaining as Content[],
-            data: { metadata },
+            data: {
+              metadata,
+              startOffset,
+              endOffset
+            },
           })
         }
+        // Next slide starts after this thematic break
+        startOffset = node.position?.end.offset ?? startOffset
         currentChildren = []
       } else {
         currentChildren.push(node)
@@ -69,7 +83,11 @@ export const remarkSlides: Plugin<[], Root> = function () {
       slides.push({
         type: 'slide',
         children: remaining as Content[],
-        data: { metadata },
+        data: {
+          metadata,
+          startOffset,
+          endOffset: treeEndOffset
+        },
       })
     }
 

@@ -34,6 +34,7 @@ function extractFrontmatter(markdown: string): {
   const deckMetadata: DeckMetadata = {}
   const lines = match[1].split('\n')
   const dangerousKeys = ['__proto__', 'constructor', 'prototype']
+  let hasValidKeyValue = false
 
   for (const line of lines) {
     const colonIndex = line.indexOf(':')
@@ -47,15 +48,17 @@ function extractFrontmatter(markdown: string): {
       }
 
       deckMetadata[key] = value
+      hasValidKeyValue = true
     }
+  }
+
+  // If no valid key:value pairs were found, treat the entire input as body
+  if (!hasValidKeyValue) {
+    return { deckMetadata: {}, body: markdown }
   }
 
   const body = markdown.slice(match[0].length)
   return { deckMetadata, body }
-}
-
-function splitRawContent(body: string): string[] {
-  return body.split(/\n---\n/).map(s => s.trim()).filter(Boolean)
 }
 
 const processor = unified()
@@ -76,14 +79,19 @@ export function parseMarkdown(markdown: string): ParseResult {
   }
 
   const tree = processor.runSync(processor.parse(body)) as Root
-  const rawChunks = splitRawContent(body)
 
   const slides: SlideData[] = (tree.children as unknown as SlideNode[]).map(
-    (node, i) => ({
-      children: node.children as RootContent[],
-      metadata: node.data?.metadata ?? {},
-      rawContent: rawChunks[i] ?? '',
-    })
+    (node) => {
+      const startOffset = node.data?.startOffset ?? 0
+      const endOffset = node.data?.endOffset ?? body.length
+      const rawContent = body.slice(startOffset, endOffset).trim()
+
+      return {
+        children: node.children as RootContent[],
+        metadata: node.data?.metadata ?? {},
+        rawContent,
+      }
+    }
   )
 
   return { slides, deckMetadata }
