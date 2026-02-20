@@ -33,11 +33,19 @@ function extractFrontmatter(markdown: string): {
 
   const deckMetadata: DeckMetadata = {}
   const lines = match[1].split('\n')
+  const dangerousKeys = ['__proto__', 'constructor', 'prototype']
+
   for (const line of lines) {
     const colonIndex = line.indexOf(':')
     if (colonIndex > 0) {
       const key = line.slice(0, colonIndex).trim()
       const value = line.slice(colonIndex + 1).trim()
+
+      // Skip dangerous keys that could cause prototype pollution
+      if (dangerousKeys.includes(key)) {
+        continue
+      }
+
       deckMetadata[key] = value
     }
   }

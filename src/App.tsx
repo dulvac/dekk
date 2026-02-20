@@ -10,6 +10,7 @@ import { loadMarkdown, saveToLocalStorage } from './core/loader'
 import { PresentationView } from './views/PresentationView'
 import { EditorView } from './views/EditorView'
 import { OverviewGrid } from './views/OverviewGrid'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 type View = 'presentation' | 'editor' | 'overview'
 
@@ -26,9 +27,14 @@ export default function App() {
 
   // Load markdown on mount
   useEffect(() => {
-    loadMarkdown().then((md) => {
-      dispatch({ type: 'SET_MARKDOWN', markdown: md })
-    })
+    loadMarkdown()
+      .then((md) => {
+        dispatch({ type: 'SET_MARKDOWN', markdown: md })
+      })
+      .catch((error) => {
+        console.error('Failed to load markdown:', error)
+        // Fall back to empty state - user can open editor to add content
+      })
   }, [])
 
   // Sync hash with view
@@ -91,10 +97,16 @@ export default function App() {
       e.preventDefault()
       const file = e.dataTransfer?.files[0]
       if (file && (file.name.endsWith('.md') || file.type === 'text/markdown')) {
-        file.text().then((text) => {
-          dispatch({ type: 'SET_MARKDOWN', markdown: text })
-          saveToLocalStorage(text)
-        })
+        file
+          .text()
+          .then((text) => {
+            dispatch({ type: 'SET_MARKDOWN', markdown: text })
+            saveToLocalStorage(text)
+          })
+          .catch((error) => {
+            console.error('Failed to read dropped file:', error)
+            // Silently ignore - user can try again or use editor
+          })
       }
     }
     window.addEventListener('dragover', handleDragOver)
@@ -110,18 +122,20 @@ export default function App() {
       dispatch({ type: 'GO_TO_SLIDE', index })
       setView('presentation')
     },
-    []
+    [dispatch]
   )
 
   return (
-    <SlideContext.Provider value={state}>
-      <SlideDispatchContext.Provider value={dispatch}>
-        {view === 'presentation' && <PresentationView />}
-        {view === 'editor' && <EditorView />}
-        {view === 'overview' && (
-          <OverviewGrid onSelectSlide={handleSelectSlide} />
-        )}
-      </SlideDispatchContext.Provider>
-    </SlideContext.Provider>
+    <ErrorBoundary>
+      <SlideContext.Provider value={state}>
+        <SlideDispatchContext.Provider value={dispatch}>
+          {view === 'presentation' && <PresentationView />}
+          {view === 'editor' && <EditorView />}
+          {view === 'overview' && (
+            <OverviewGrid onSelectSlide={handleSelectSlide} />
+          )}
+        </SlideDispatchContext.Provider>
+      </SlideContext.Provider>
+    </ErrorBoundary>
   )
 }

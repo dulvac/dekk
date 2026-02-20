@@ -25,6 +25,7 @@ export function EditorView() {
     [dispatch]
   )
 
+  // Guard against out-of-bounds access
   const currentSlide = slides[currentIndex]
 
   return (

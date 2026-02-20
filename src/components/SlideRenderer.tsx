@@ -1,6 +1,7 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkEmoji from 'remark-emoji'
+import rehypeSanitize from 'rehype-sanitize'
 import { TitleBlock, SubtitleBlock } from './TitleBlock'
 import { UnorderedList, OrderedList, ListItem } from './BulletList'
 import { ImageBlock } from './ImageBlock'
@@ -51,6 +52,7 @@ export function SlideRenderer({ markdown, slide }: SlideRendererProps) {
     <ErrorBoundary>
       <Markdown
         remarkPlugins={[remarkGfm, remarkEmoji]}
+        rehypePlugins={[rehypeSanitize]}
         components={components}
       >
         {content}

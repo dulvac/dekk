@@ -66,7 +66,9 @@ export function slideReducer(
 
 export const SlideContext = createContext<SlideState>(initialState)
 export const SlideDispatchContext = createContext<Dispatch<SlideAction>>(
-  () => {}
+  () => {
+    throw new Error('useSlideDispatch must be used within a SlideDispatchContext.Provider')
+  }
 )
 
 export function useSlides() {
