@@ -6,7 +6,7 @@
   background-color: var(--mp-surface);
   font-family: var(--mp-font-body);
   color: var(--mp-text);
-  transform-origin: top left;
+  transform-origin: center center;
 }
 
 .frameContent {

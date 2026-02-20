@@ -6,14 +6,14 @@
 }
 
 .editorPane {
-  width: 50%;
+  width: 40%;
   height: 100%;
   overflow: hidden;
   border-right: 1px solid rgba(107, 115, 148, 0.2);
 }
 
 .previewPane {
-  width: 50%;
+  width: 60%;
   height: 100%;
   overflow: hidden;
 }
