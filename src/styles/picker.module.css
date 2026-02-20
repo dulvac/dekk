@@ -1,0 +1,77 @@
+.pickerView {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--mp-bg);
+  overflow-y: auto;
+  padding: 40px;
+}
+
+.header {
+  margin-bottom: 60px;
+  text-align: center;
+}
+
+.logo {
+  font-size: 48px;
+  font-weight: 700;
+  background: var(--mp-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 32px 24px;
+  background: var(--mp-surface);
+  border: 1px solid rgba(107, 115, 148, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--mp-transition-duration) var(--mp-transition-ease);
+  text-align: left;
+  color: var(--mp-text);
+  font-family: var(--mp-font-body);
+}
+
+.card:hover {
+  background: rgba(20, 24, 41, 0.8);
+  border-color: var(--mp-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(108, 92, 231, 0.2);
+}
+
+.card:focus {
+  outline: 2px solid var(--mp-primary);
+  outline-offset: 2px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--mp-text);
+}
+
+.cardAuthor {
+  font-size: 14px;
+  color: var(--mp-muted);
+}
+
+.cardMeta {
+  font-size: 14px;
+  color: var(--mp-secondary);
+  margin-top: 8px;
+}
