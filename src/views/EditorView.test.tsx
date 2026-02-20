@@ -38,6 +38,7 @@ describe('EditorView', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: 'test',
     }
 
     renderWithContext(<EditorView />, state)
@@ -55,6 +56,7 @@ describe('EditorView', () => {
       slides: [],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: 'test',
     }
 
     renderWithContext(<EditorView />, state)
@@ -81,6 +83,7 @@ describe('EditorView', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: 'test',
     }
 
     renderWithContext(<EditorView />, state)
@@ -94,6 +97,7 @@ describe('EditorView', () => {
       slides: [],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: 'test',
     }
 
     renderWithContext(<EditorView />, state)

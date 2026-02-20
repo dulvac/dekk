@@ -25,6 +25,7 @@ describe('PresentationView', () => {
       slides: [],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     renderWithContext(<PresentationView />, state)
@@ -46,6 +47,7 @@ describe('PresentationView', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     renderWithContext(<PresentationView />, state)
@@ -71,6 +73,7 @@ describe('PresentationView', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     renderWithContext(<PresentationView />, state)
@@ -96,6 +99,7 @@ describe('PresentationView', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     renderWithContext(<PresentationView />, state)
