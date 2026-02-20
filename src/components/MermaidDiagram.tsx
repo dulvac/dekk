@@ -27,7 +27,7 @@ async function initMermaid() {
       fontSize: '16px',
       fontFamily: 'Inter, system-ui, sans-serif',
     },
-    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+    flowchart: { useMaxWidth: true, htmlLabels: false, curve: 'basis' },
     sequence: { useMaxWidth: true },
   })
   mermaidInitialized = true

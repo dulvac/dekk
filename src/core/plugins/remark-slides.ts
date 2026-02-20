@@ -21,6 +21,8 @@ export interface SlideNode {
 
 const COMMENT_DIRECTIVE_PATTERN = /^<!--\s*(\w+)\s*:\s*(.+?)\s*-->$/
 
+const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype']
+
 function extractMetadata(children: RootContent[]): {
   metadata: SlideMetadata
   remaining: RootContent[]
@@ -33,7 +35,9 @@ function extractMetadata(children: RootContent[]): {
     if (node.type === 'html') {
       const match = node.value.match(COMMENT_DIRECTIVE_PATTERN)
       if (match) {
-        metadata[match[1]] = match[2]
+        if (!DANGEROUS_KEYS.includes(match[1])) {
+          metadata[match[1]] = match[2]
+        }
         startIndex = i + 1
         continue
       }
