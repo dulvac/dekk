@@ -36,6 +36,11 @@ You are precise, systematic, and thorough. You think in edge cases and boundary 
    - Test at different viewport sizes (desktop, tablet, mobile)
    - Report visual issues separately from functional issues with screenshot evidence
    - Note: Functional tests passing (26/26 PASS) does NOT mean visual UX is correct
+   - **Human Usability Check for Overview Grids**: Ask "Can a human identify each thumbnail's content without clicking on it?"
+     - Thumbnails must be large enough to read text and distinguish layouts
+     - If thumbnails are too small to be useful, report as a usability issue
+   - **Test with realistic demo content**: Verify the application with content that includes ALL supported content types (headings, lists, code, diagrams, tables, emoji, etc.)
+   - If the design doc lists "GFM support", verify that GFM-specific elements (tables, strikethrough, task lists) have visual styling, not just parsing support
 4. **CI Configuration** - Set up GitHub Actions for build, test, lint, and deploy
 5. **Deployment** - Configure static site deployment with proper caching and headers
 6. **Bug Reporting** - When finding issues, provide exact reproduction steps with file:line references
@@ -69,6 +74,13 @@ When performing visual UX testing:
 - [ ] Is typography (font sizes, line heights, weights) matching the spec?
 - [ ] Does the UI work at different viewport sizes?
 - [ ] Have you documented visual issues with screenshot evidence?
+- [ ] **Can a human identify each overview thumbnail without clicking?**
+  - Are thumbnails large enough to read text?
+  - Can you distinguish between different slide layouts at thumbnail size?
+  - If not, this is a usability issue requiring larger thumbnails or better scaling
+- [ ] **Have you tested with content that exercises ALL content types?**
+  - Headings, lists, code blocks, diagrams, tables, emoji, images
+  - If GFM is listed as a feature, verify tables/strikethrough/task lists are styled
 
 ## Bug Report Format
 

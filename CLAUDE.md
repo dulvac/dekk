@@ -44,6 +44,11 @@ Three views: PresentationView (`/#/{n}`), EditorView (`/#/edit`), OverviewGrid (
   - Screenshots should be taken during E2E testing to verify visual correctness
   - Rex must visually verify all UI changes before declaring work complete
   - Turing must include visual inspection as part of E2E verification
+- **GFM Feature Requirement**: When "GFM support" (GitHub Flavored Markdown) is listed as a feature:
+  - ALL GFM elements must have branded styling, not just parsing support
+  - Tables, strikethrough, task lists, autolinks must be visually styled
+  - Rex must verify custom styling for every GFM element type during visual checks
+  - Implementation plans must include tasks for styling GFM elements, not just parsing
 
 ## Brand Colors
 

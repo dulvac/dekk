@@ -153,6 +153,69 @@ fe35698 - feat: add remark-slides plugin, markdown parser, and slide store
 
 ---
 
+## 2026-02-20 — Visual UX Testing & Process Improvements
+
+**What happened:** After implementation completion, visual UX testing revealed that passing functional tests (37/37) did not guarantee visual quality. Two rounds of testing by Turing uncovered 4 visual issues, leading to agent instruction updates and team workflow improvements.
+
+**Testing rounds:**
+
+**Round 1 (Incomplete):** Team lead manually tested the application instead of dispatching Turing. Caught some issues but missed several critical visual problems because the testing wasn't systematic.
+
+**Round 2 (Systematic):** Turing ran comprehensive E2E testing with screenshots and visual inspection across all three views (presentation, overview, editor). Found 4 issues:
+
+1. **Tables completely unstyled** — GFM tables were parsing correctly but had zero brand styling (default browser table styles). The react-markdown component mapping didn't include custom table components.
+2. **Overview thumbnails too small** — Thumbnails were 120x90px, making text unreadable and content unidentifiable without clicking. Failed the "can a human identify this without clicking?" test.
+3. **Progress bar nearly invisible** — 1px height and dark color made it imperceptible during presentations.
+4. **Content not evaluated against design spec** — The first pass didn't systematically compare rendered output to design document specifications for padding, spacing, and layout proportions.
+
+**Grade awarded:** B+ (functional but visually flawed)
+
+**The core lesson:** Functional tests passing does NOT mean visually correct. 37 passing tests verified behavior but caught zero visual issues.
+
+**Root causes identified:**
+
+1. **Rex's visual checks were insufficient** — He didn't verify EVERY content type in the demo deck (titles, bullets, code, diagrams, tables, emoji). Tables were completely missed.
+2. **Implementation plan didn't include GFM styling tasks** — Design doc specified "GFM support", but the plan only included parsing (remark-gfm), not styling for GFM elements like tables, strikethrough, and task lists.
+3. **Overview usability wasn't tested** — Nobody asked "Can a human actually use these thumbnails?" The thumbnails technically worked (they rendered and were clickable) but were functionally useless.
+4. **Delegation breakdown** — Team lead ran tests himself instead of dispatching Turing, violating the established workflow where specialists do their specialized work.
+
+**Agent instruction updates made:**
+
+1. **Rex (frontend):**
+   - Added requirement to verify EVERY content type before declaring UI work complete
+   - Checklist now explicitly lists: headings, lists, code, diagrams, **tables**, strikethrough, task lists, emoji
+   - Must load demo content that exercises all content types at once
+   - When "GFM support" is in requirements, must verify GFM elements have custom styling
+
+2. **Turing (QA):**
+   - Added human usability check for overview grids: "Can a human identify each thumbnail's content without clicking on it?"
+   - Must test with realistic demo content that includes ALL supported content types
+   - When GFM is listed, must verify GFM elements have visual styling, not just parsing support
+
+3. **CLAUDE.md (team-wide):**
+   - Added "GFM Feature Requirement" section stating: when GFM support is a feature, ALL GFM elements need branded styling, not just parsing
+   - Implementation plans must include tasks for styling GFM elements explicitly
+
+**Team workflow improvement:** Visual UX testing is now explicitly part of both Rex's (implementation verification) and Turing's (E2E verification) responsibilities. Rex verifies during implementation, Turing verifies during testing phase.
+
+**How the user caught the delegation issue:** User observed the team lead was running Playwright tests instead of dispatching to Turing. Pointed out this violated the established rule: "Team lead coordinates, specialists execute." Reminded that testing (including visual UX testing) is Turing's responsibility, not the team lead's.
+
+**Outcome:** Agent instructions updated to prevent these issues in future work. The team now has clear checkpoints for:
+- Verifying ALL content types render with brand styling
+- Testing overview/thumbnail usability from a human perspective
+- Ensuring GFM features include styling tasks, not just parsing
+- Proper delegation of testing work to Turing
+
+**Files updated:**
+- `/Users/adulvac/work/marko-pollo/.claude/agents/rex-frontend.md`
+- `/Users/adulvac/work/marko-pollo/.claude/agents/turing-qa.md`
+- `/Users/adulvac/work/marko-pollo/CLAUDE.md`
+- `/Users/adulvac/work/marko-pollo/docs/ai-journal.md` (this entry)
+
+**No code changes in this session.** This was a process improvement and documentation update session.
+
+---
+
 ## AI-Native Project Structure
 
 ```

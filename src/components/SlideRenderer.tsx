@@ -7,6 +7,7 @@ import { UnorderedList, OrderedList, ListItem } from './BulletList'
 import { ImageBlock } from './ImageBlock'
 import { CodeBlock } from './CodeBlock'
 import { MermaidDiagram } from './MermaidDiagram'
+import { Table, TableHead, TableRow, TableHeaderCell, TableCell } from './TableBlock'
 import { ErrorBoundary } from './ErrorBoundary'
 import type { Components } from 'react-markdown'
 import type { SlideData } from '../core/parser'
@@ -24,6 +25,11 @@ const components: Components = {
   ),
   li: ({ children, ...props }) => <ListItem {...props}>{children}</ListItem>,
   img: (props) => <ImageBlock {...props} />,
+  table: ({ children, ...props }) => <Table {...props}>{children}</Table>,
+  thead: ({ children, ...props }) => <TableHead {...props}>{children}</TableHead>,
+  tr: ({ children, ...props }) => <TableRow {...props}>{children}</TableRow>,
+  th: ({ children, ...props }) => <TableHeaderCell {...props}>{children}</TableHeaderCell>,
+  td: ({ children, ...props }) => <TableCell {...props}>{children}</TableCell>,
   code: ({ className, children, ...props }) => {
     const langMatch = (className || '').match(/language-(\w+)/)
     if (langMatch && langMatch[1] === 'mermaid') {

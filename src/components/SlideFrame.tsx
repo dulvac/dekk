@@ -32,11 +32,19 @@ export function SlideFrame({ children, className, style }: SlideFrameProps) {
   return (
     <div ref={wrapperRef} className={styles.scaleWrapper}>
       <div
-        className={`${styles.frame} ${className ?? ''}`}
-        style={{ transform: `scale(${scale})`, ...style }}
+        style={{
+          width: SLIDE_WIDTH * scale,
+          height: SLIDE_HEIGHT * scale,
+          overflow: 'hidden',
+        }}
       >
-        <div className={styles.frameContent}>
-          {children}
+        <div
+          className={`${styles.frame} ${className ?? ''}`}
+          style={{ transform: `scale(${scale})`, transformOrigin: 'top left', ...style }}
+        >
+          <div className={styles.frameContent}>
+            {children}
+          </div>
         </div>
       </div>
     </div>

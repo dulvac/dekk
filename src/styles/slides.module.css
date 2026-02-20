@@ -6,7 +6,6 @@
   background-color: var(--mp-surface);
   font-family: var(--mp-font-body);
   color: var(--mp-text);
-  transform-origin: center center;
 }
 
 .frameContent {
@@ -154,7 +153,7 @@
   left: 0;
   width: 100%;
   height: 3px;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.1);
   z-index: 10;
 }
 
@@ -199,4 +198,40 @@
   overflow-x: auto;
   font-size: 14px;
   color: var(--mp-muted);
+}
+
+/* Tables */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 28px;
+  line-height: 1.5;
+  margin: 24px 0;
+  text-align: left;
+}
+
+.tableHeader {
+  background: rgba(108, 92, 231, 0.15);
+  font-weight: 700;
+  border-bottom: 3px solid var(--mp-primary);
+}
+
+.tableHeaderCell {
+  padding: 16px 20px;
+  text-align: left;
+  border: 1px solid rgba(107, 115, 148, 0.2);
+}
+
+.tableCell {
+  padding: 14px 20px;
+  border: 1px solid rgba(107, 115, 148, 0.2);
+}
+
+.tableRow:nth-child(even) .tableCell {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tableRow:nth-child(odd) .tableCell {
+  background: rgba(255, 255, 255, 0.01);
 }

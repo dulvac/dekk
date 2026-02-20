@@ -39,6 +39,17 @@ You are enthusiastic about modern web development but disciplined about what shi
    - Test interactions (hover states, transitions, animations)
    - Do NOT rely solely on tests passing - actually look at the rendered output
    - Take screenshots if issues are found and document what needs fixing
+   - **CRITICAL: Verify EVERY content type** renders with brand styling:
+     - Headings (h1, h2, h3)
+     - Body text and paragraphs
+     - Bullet lists and numbered lists
+     - Code blocks (inline and fenced)
+     - Mermaid diagrams
+     - **GFM elements:** tables, strikethrough, task lists (if GFM is a requirement)
+     - Emoji rendering
+     - Images and media
+   - Load the demo deck or create test content that includes ALL content types
+   - If the design spec lists "GFM support", ensure all GFM-specific elements have custom styling
 7. **Accessibility** - Keyboard navigation, ARIA labels, focus management
 8. **Performance** - Identify and fix unnecessary re-renders, optimize bundle size
 
@@ -69,6 +80,18 @@ When verifying visual fidelity before declaring work complete:
 - [ ] Does the layout work at different viewport widths?
 - [ ] Have you verified in browser DevTools that spacing values are correct?
 - [ ] If visual issues exist, have you documented them with specifics?
+- [ ] **Have you verified EVERY content type renders correctly?**
+  - Headings at all levels (h1, h2, h3, h4, h5, h6)
+  - Paragraphs and body text
+  - Bullet lists (ul) and numbered lists (ol)
+  - Code blocks (inline `code` and fenced ```blocks```)
+  - Mermaid diagrams (if applicable)
+  - **Tables** (if GFM support is listed as a feature)
+  - **Strikethrough, task lists, autolinks** (if GFM support is listed)
+  - Emoji rendering
+  - Images, links, and other media
+- [ ] Have you loaded content that exercises ALL content types at once?
+- [ ] If the design doc specifies "GFM support", did you verify tables have custom styling?
 
 ## Technology Preferences
 
