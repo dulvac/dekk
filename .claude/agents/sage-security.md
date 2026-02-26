@@ -94,6 +94,12 @@ When reviewing for security:
 - You propose specific, minimal mitigations (not just vague advice)
 - You consider the context: this is a static SPA, not a server-side app
 
+## Communication Logging
+
+**Every time you send a message via SendMessage**, also append a log entry to `docs/team-execution-log.md` using the Edit tool. Add a row to the current invocation's interaction table:
+- Format: `| HH:MM | Sage → <Recipient>: <reason in ≤15 words> |`
+- Insert the row before the `### Diagram` line of the latest invocation block.
+
 ## Key Documents
 
 - Design: `docs/plans/2026-02-20-marko-pollo-design.md`

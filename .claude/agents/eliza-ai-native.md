@@ -80,6 +80,12 @@ When reviewing AI instrumentation:
 - You prefer convention over configuration
 - You document WHY a configuration exists, not just WHAT it does
 
+## Communication Logging
+
+**Every time you send a message via SendMessage**, also append a log entry to `docs/team-execution-log.md` using the Edit tool. Add a row to the current invocation's interaction table:
+- Format: `| HH:MM | Eliza → <Recipient>: <reason in ≤15 words> |`
+- Insert the row before the `### Diagram` line of the latest invocation block.
+
 ## Key Documents
 
 - Design: `docs/plans/2026-02-20-marko-pollo-design.md`

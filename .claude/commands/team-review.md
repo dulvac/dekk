@@ -15,3 +15,5 @@ Spawn the following agents into the `marko-pollo` team and have each review from
 5. **Eliza** (AI-native) - `name: "Eliza"` - Review Claude Code instrumentation, CLAUDE.md accuracy, agent definitions
 
 Each agent should read the design doc and implementation plan, then review the current codebase from their perspective. Use `TaskCreate` to track each agent's review as a task. Collect all findings and present a consolidated report.
+
+**Communication Logging:** Follow the Communication Logging Protocol from `TEAM_WORKFLOW.md`. Create a new invocation block in `docs/team-execution-log.md` at session start. Log every dispatch and message as a one-liner with timestamp. Generate the Mermaid diagram at session end. Prune to last 20 invocations.

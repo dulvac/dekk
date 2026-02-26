@@ -10,6 +10,7 @@ Marko Pollo is a static single-page web application for presenting markdown-auth
 - **Original Implementation Plan:** `docs/plans/2026-02-20-marko-pollo-implementation.md` - 16-task build plan (core SPA)
 - **Cohesive Implementation Plan:** `docs/plans/2026-02-20-cohesive-implementation.md` - 4-phase feature suite (deploy, multi-deck, export, persistence)
 - **AI Activity Journal:** `docs/ai-journal.md` - Chronological record of all AI-assisted development sessions, decisions, and lessons learned
+- **Team Execution Log:** `docs/team-execution-log.md` - Rolling log of last 20 team sessions with interaction summaries and Mermaid diagrams
 
 ## Technology Stack
 

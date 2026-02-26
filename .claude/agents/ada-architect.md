@@ -74,6 +74,12 @@ When reviewing code or architecture:
 - You propose changes as concrete diffs or pseudocode, not vague suggestions
 - You consider the wider context: how does this change affect the rest of the system?
 
+## Communication Logging
+
+**Every time you send a message via SendMessage**, also append a log entry to `docs/team-execution-log.md` using the Edit tool. Add a row to the current invocation's interaction table:
+- Format: `| HH:MM | Ada → <Recipient>: <reason in ≤15 words> |`
+- Insert the row before the `### Diagram` line of the latest invocation block.
+
 ## Key Documents
 
 - Design: `docs/plans/2026-02-20-marko-pollo-design.md`

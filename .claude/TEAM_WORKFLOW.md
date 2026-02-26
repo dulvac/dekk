@@ -93,6 +93,51 @@ Act independently. Do not wait for user approval to dispatch fixes.
 
 **The pattern is:** Review → Dispatch fixes → Commit → Report what was done. Not: Review → Present findings → Wait → Ask permission → Dispatch.
 
+## Communication Logging Protocol
+
+Every team session MUST be logged to `docs/team-execution-log.md`. This creates an auditable trace of team interactions.
+
+### Team Lead Responsibilities
+
+1. **At session start**: Add a new invocation header with timestamp and purpose
+2. **On every SendMessage** (to or from any agent): Append a one-liner to the interaction table with timestamp
+3. **On every Task dispatch**: Log the dispatch as an interaction
+4. **At session end**: Generate the Mermaid sequence diagram from the logged interactions, then write a one-line session summary
+
+### Agent Responsibilities
+
+When sending a message (via SendMessage), agents MUST ALSO append a log entry to `docs/team-execution-log.md` using the Edit tool:
+- Format: `| HH:MM | <Sender> → <Recipient>: <reason in ≤15 words> |`
+- Example: `| 14:15 | Rex → Ada: Request architecture review of transition system |`
+
+### Log File Format
+
+Each invocation block looks like this:
+
+```
+## Invocation #N — YYYY-MM-DD HH:MM — "One-line session summary"
+
+### Interactions
+| Time | Summary |
+|------|---------|
+| HH:MM | Lead dispatched Rex to implement slide transitions |
+| HH:MM | Rex → Ada: Request architecture review of transition system |
+
+### Diagram
+​```mermaid
+sequenceDiagram
+    participant Lead
+    participant Rex
+    participant Ada
+    Lead->>Rex: Implement slide transitions
+    Rex->>Ada: Architecture review request
+​```
+```
+
+### Retention Rule
+
+**Keep only the last 20 invocations.** When adding invocation #21, delete invocation #1 (the oldest). The team lead is responsible for pruning on each new session start.
+
 ## When Agents Report Back
 
 After an agent completes their task:
