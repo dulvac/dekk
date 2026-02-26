@@ -1,6 +1,6 @@
 ---
 title: Architecture Patterns
-author: Sam Architect
+author: Sammy
 ---
 
 # Architecture Patterns
