@@ -34,6 +34,23 @@ Four views: PickerView (`/#/`), PresentationView (`/#deck/{id}/{n}`), EditorView
 
 Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are created as worktrees under this directory (e.g., `.worktrees/feature-name`).
 
+## Git Workflow
+
+- **Never commit directly to master.** All work must be on a branch.
+- **Branch naming:** `feature/<short-description>` for new features, `fix/<short-description>` for bug fixes (e.g., `feature/export-pdf`, `fix/button-contrast`).
+- **Conventional Commits:** All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) spec:
+  - `feat: add export to PDF` — new feature
+  - `fix: correct button contrast ratio` — bug fix
+  - `refactor: extract keyboard hooks from App.tsx` — code restructuring
+  - `docs: update color scheme design doc` — documentation only
+  - `test: add MermaidDiagram unit tests` — tests only
+  - `chore: update dependencies` — maintenance
+  - `style: fix CSS formatting` — formatting, no logic change
+  - `perf: lazy-load Shiki highlighter` — performance improvement
+  - Scope is optional: `feat(editor): add save shortcut`
+  - Breaking changes: `feat!: change slide metadata format` or add `BREAKING CHANGE:` footer
+- **Create a PR** to merge back into master when work is complete.
+
 ## Coding Standards
 
 - TypeScript strict mode, no `any` types
