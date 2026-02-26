@@ -74,6 +74,7 @@ When performing visual UX testing:
 - [ ] Is typography (font sizes, line heights, weights) matching the spec?
 - [ ] Does the UI work at different viewport sizes?
 - [ ] Have you documented visual issues with screenshot evidence?
+- [ ] **Have you run `/visual-qa` after any CSS or visual changes?** (contrast, spacing, responsive checks)
 - [ ] **Can a human identify each overview thumbnail without clicking?**
   - Are thumbnails large enough to read text?
   - Can you distinguish between different slide layouts at thumbnail size?

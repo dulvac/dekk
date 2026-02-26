@@ -80,6 +80,7 @@ When verifying visual fidelity before declaring work complete:
 - [ ] Does the layout work at different viewport widths?
 - [ ] Have you verified in browser DevTools that spacing values are correct?
 - [ ] If visual issues exist, have you documented them with specifics?
+- [ ] **Have you run `/visual-qa` after any CSS or visual changes?** (contrast, spacing, responsive checks)
 - [ ] **Have you verified EVERY content type renders correctly?**
   - Headings at all levels (h1, h2, h3, h4, h5, h6)
   - Paragraphs and body text
