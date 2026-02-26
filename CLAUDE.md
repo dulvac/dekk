@@ -29,6 +29,10 @@ Marko Pollo is a static single-page web application for presenting markdown-auth
 
 Four views: PickerView (`/#/`), PresentationView (`/#deck/{id}/{n}`), EditorView (`/#deck/{id}/editor`), OverviewGrid (`/#deck/{id}/overview`). Deck-scoped hash routing via `useRoute` hook. Presentations live in `presentations/*/slides.md` and are discovered at build time via Vite's `import.meta.glob`. State flows through React Context with `LOAD_DECK`/`UNLOAD_DECK` actions. Editor persistence detects environment (dev server → file write, GitHub Pages → GitHub API PR, unknown → download fallback).
 
+## Git Worktrees
+
+Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are created as worktrees under this directory (e.g., `.worktrees/feature-name`).
+
 ## Coding Standards
 
 - TypeScript strict mode, no `any` types
