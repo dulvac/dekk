@@ -8,8 +8,105 @@
 .editorPane {
   width: 40%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-right: 1px solid rgba(107, 115, 148, 0.2);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(107, 115, 148, 0.2);
+  background-color: var(--mp-surface);
+}
+
+.exportBtn {
+  padding: 6px 12px;
+  background-color: var(--mp-primary);
+  color: var(--mp-text);
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: var(--mp-font-body);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.exportBtn:hover {
+  opacity: 0.85;
+}
+
+.exportBtn:active {
+  opacity: 0.7;
+}
+
+.exportBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.savedIndicator {
+  font-size: 13px;
+  color: var(--mp-success);
+  font-family: var(--mp-font-body);
+}
+
+.saveBtn {
+  padding: 6px 12px;
+  background-color: var(--mp-primary);
+  color: var(--mp-text);
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: var(--mp-font-body);
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.saveBtn:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.errorContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.errorText {
+  font-size: 13px;
+  color: var(--mp-danger);
+  font-family: var(--mp-font-body);
+}
+
+.prLink {
+  font-size: 13px;
+  color: var(--mp-secondary);
+  font-family: var(--mp-font-body);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.prLink:hover {
+  opacity: 0.85;
+}
+
+.editorWrapper {
+  flex: 1;
+  overflow: hidden;
 }
 
 .previewPane {

@@ -83,5 +83,6 @@ When reviewing AI instrumentation:
 ## Key Documents
 
 - Design: `docs/plans/2026-02-20-marko-pollo-design.md`
-- Implementation Plan: `docs/plans/2026-02-20-marko-pollo-implementation.md`
+- Original Implementation Plan: `docs/plans/2026-02-20-marko-pollo-implementation.md`
+- Cohesive Implementation Plan: `docs/plans/2026-02-20-cohesive-implementation.md`
 - AI Activity Journal: `docs/ai-journal.md`

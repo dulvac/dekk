@@ -6,6 +6,7 @@ export interface SlideState {
   slides: SlideData[]
   deckMetadata: DeckMetadata
   currentIndex: number
+  currentDeck: string | null
 }
 
 export type SlideAction =
@@ -13,12 +14,15 @@ export type SlideAction =
   | { type: 'NEXT_SLIDE' }
   | { type: 'PREV_SLIDE' }
   | { type: 'GO_TO_SLIDE'; index: number }
+  | { type: 'LOAD_DECK'; deckId: string; markdown: string }
+  | { type: 'UNLOAD_DECK' }
 
 export const initialState: SlideState = {
   rawMarkdown: '',
   slides: [],
   deckMetadata: {},
   currentIndex: 0,
+  currentDeck: null,
 }
 
 export function slideReducer(
@@ -33,12 +37,25 @@ export function slideReducer(
         Math.max(0, slides.length - 1)
       )
       return {
+        ...state,
         rawMarkdown: action.markdown,
         slides,
         deckMetadata,
         currentIndex: clampedIndex,
       }
     }
+    case 'LOAD_DECK': {
+      const { slides, deckMetadata } = parseMarkdown(action.markdown)
+      return {
+        rawMarkdown: action.markdown,
+        slides,
+        deckMetadata,
+        currentIndex: 0,
+        currentDeck: action.deckId,
+      }
+    }
+    case 'UNLOAD_DECK':
+      return initialState
     case 'NEXT_SLIDE':
       return {
         ...state,

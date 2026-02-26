@@ -149,6 +149,37 @@ git commit -m "refactor: move default slides to presentations/default/slides.md"
 
 ---
 
+### Task 2.1b: Add example presentation decks
+
+**Files:**
+- Create: `presentations/intro-to-typescript/slides.md`
+- Create: `presentations/architecture-patterns/slides.md`
+- Create: `presentations/getting-started/slides.md`
+
+**Step 1: Create example presentations**
+
+Create 3 example decks that showcase different Marko Pollo features. Each should use frontmatter with `title` and `author`, and exercise features like code blocks, Mermaid diagrams, tables, task lists, and emoji.
+
+**`presentations/intro-to-typescript/slides.md`** — A short tech talk (5-6 slides) about TypeScript basics. Exercises: code blocks with `typescript` language, bullet lists, bold/italic.
+
+**`presentations/architecture-patterns/slides.md`** — A software architecture talk (5-6 slides). Exercises: Mermaid diagrams (flowchart, sequence), tables, nested lists.
+
+**`presentations/getting-started/slides.md`** — A Marko Pollo tutorial deck (4-5 slides) explaining how to use the app. Exercises: keyboard shortcut reference, task lists, emoji.
+
+**Step 2: Verify all decks parse correctly**
+
+Run: `node -e "const fs = require('fs'); const dirs = fs.readdirSync('presentations'); console.log(dirs)"`
+Expected: `['architecture-patterns', 'default', 'getting-started', 'intro-to-typescript']`
+
+**Step 3: Commit**
+
+```bash
+git add presentations/
+git commit -m "content: add 3 example presentation decks"
+```
+
+---
+
 ### Task 2.2: Create deck registry module
 
 **Files:**

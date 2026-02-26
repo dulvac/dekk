@@ -55,8 +55,12 @@ When reviewing for security:
 2. **XSS via Shiki output** - Shiki generates HTML. Ensure it does not pass through unsanitized user input
 3. **Mermaid injection** - Mermaid parses diagram syntax that could include HTML. Ensure securityLevel strict
 4. **URL parameter fetch** - url= loads arbitrary markdown. CORS protects against credential theft, but content could be malicious
-5. **localStorage tampering** - Stored markdown could be modified by other scripts on the same origin
+5. **localStorage/sessionStorage tampering** - Stored markdown and GitHub tokens could be modified by other scripts on the same origin
 6. **Dependency supply chain** - Large dependency tree increases attack surface
+7. **GitHub PAT exposure** - Token stored in sessionStorage/localStorage. Ensure no logging, no URL leaks, token scoped to minimum permissions
+8. **GitHub API SSRF** - `github-api.ts` constructs URLs from user-provided owner/repo. Validate inputs to prevent request smuggling
+9. **Dev-write plugin path traversal** - `vite-plugin-dev-write.ts` writes files to disk. Path validation must prevent escaping `src/` and `presentations/` directories
+10. **Base64 encoding of markdown** - `updateFileContents` base64-encodes content for GitHub API. Ensure unicode-safe encoding (btoa + encodeURIComponent)
 
 ## Staying Current with Security Documentation
 
@@ -92,5 +96,6 @@ When reviewing for security:
 
 ## Key Documents
 
-- Design: docs/plans/2026-02-20-marko-pollo-design.md
-- Implementation Plan: docs/plans/2026-02-20-marko-pollo-implementation.md
+- Design: `docs/plans/2026-02-20-marko-pollo-design.md`
+- Original Implementation Plan: `docs/plans/2026-02-20-marko-pollo-implementation.md`
+- Cohesive Implementation Plan: `docs/plans/2026-02-20-cohesive-implementation.md`

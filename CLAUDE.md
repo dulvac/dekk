@@ -7,12 +7,13 @@ Marko Pollo is a static single-page web application for presenting markdown-auth
 ## Key Documents
 
 - **Design Document:** `docs/plans/2026-02-20-marko-pollo-design.md` - Full specification including requirements, architecture, visual identity, and component tree
-- **Implementation Plan:** `docs/plans/2026-02-20-marko-pollo-implementation.md` - 16-task step-by-step build plan with TDD approach
+- **Original Implementation Plan:** `docs/plans/2026-02-20-marko-pollo-implementation.md` - 16-task build plan (core SPA)
+- **Cohesive Implementation Plan:** `docs/plans/2026-02-20-cohesive-implementation.md` - 4-phase feature suite (deploy, multi-deck, export, persistence)
 - **AI Activity Journal:** `docs/ai-journal.md` - Chronological record of all AI-assisted development sessions, decisions, and lessons learned
 
 ## Technology Stack
 
-- **Build:** Vite + React 18 + TypeScript
+- **Build:** Vite 6 + React 19 + TypeScript
 - **Markdown:** unified/remark/rehype pipeline with custom remark-slides plugin
 - **Rendering:** react-markdown with custom component mappings
 - **Code Highlighting:** Shiki with @shikijs/transformers (diff, focus, highlight)
@@ -20,11 +21,13 @@ Marko Pollo is a static single-page web application for presenting markdown-auth
 - **Editor:** CodeMirror 6 (@uiw/react-codemirror)
 - **Styling:** CSS Modules + CSS custom properties (no runtime CSS-in-JS)
 - **State:** React Context + useReducer (no external state library)
-- **Testing:** Vitest + @testing-library/react
+- **Persistence:** Environment-aware save (Vite dev plugin, GitHub API, file download fallback)
+- **Testing:** Vitest + @testing-library/react + Playwright E2E
+- **CI/CD:** GitHub Actions (build, test, deploy to GitHub Pages)
 
 ## Architecture
 
-Three views: PresentationView (`/#/{n}`), EditorView (`/#/edit`), OverviewGrid (`/#/overview`). Hash-based routing. Markdown is split into slides on `---` separators by a custom remark plugin. State flows through React Context.
+Four views: PickerView (`/#/`), PresentationView (`/#deck/{id}/{n}`), EditorView (`/#deck/{id}/editor`), OverviewGrid (`/#deck/{id}/overview`). Deck-scoped hash routing via `useRoute` hook. Presentations live in `presentations/*/slides.md` and are discovered at build time via Vite's `import.meta.glob`. State flows through React Context with `LOAD_DECK`/`UNLOAD_DECK` actions. Editor persistence detects environment (dev server → file write, GitHub Pages → GitHub API PR, unknown → download fallback).
 
 ## Coding Standards
 

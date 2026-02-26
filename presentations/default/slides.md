@@ -1,3 +1,8 @@
+---
+title: Marko Pollo Demo
+author: Marko Pollo
+---
+
 # Marko Pollo :rocket:
 
 A beautiful slide deck engine for developers

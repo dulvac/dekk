@@ -4,8 +4,22 @@ import App from './App'
 
 // Mock the loader module
 vi.mock('./core/loader', () => ({
-  loadMarkdown: vi.fn(),
-  saveToLocalStorage: vi.fn(),
+  loadDeck: vi.fn(),
+  saveDeckDraft: vi.fn(),
+  migrateOldStorage: vi.fn(),
+}))
+
+// Mock deck registry
+vi.mock('./core/deckRegistry', () => ({
+  deckRegistry: [
+    { id: 'default', title: 'Default Deck', slideCount: 1, rawMarkdown: '# Slide 1' },
+    { id: 'test', title: 'Test Deck', slideCount: 2, rawMarkdown: '# Slide 1\n---\n# Slide 2' },
+  ],
+  getDeck: vi.fn((id: string) => {
+    if (id === 'default') return { id: 'default', title: 'Default Deck', slideCount: 1, rawMarkdown: '# Slide 1' }
+    if (id === 'test') return { id: 'test', title: 'Test Deck', slideCount: 2, rawMarkdown: '# Slide 1\n---\n# Slide 2' }
+    return undefined
+  }),
 }))
 
 // Mock heavy components that don't work well in jsdom
@@ -23,16 +37,32 @@ vi.mock('./views/OverviewGrid', () => ({
   OverviewGrid: () => <div data-testid="overview-grid">Overview Grid</div>,
 }))
 
+vi.mock('./views/PickerView', () => ({
+  PickerView: () => <div data-testid="picker-view">Picker View</div>,
+}))
+
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.location.hash = ''
   })
 
-  it('renders PresentationView by default (empty hash)', async () => {
-    const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
+  it('renders PickerView by default (empty hash)', async () => {
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
 
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('picker-view')).toBeInTheDocument()
+    })
+  })
+
+  it('renders PresentationView when hash is #deck/default/0', async () => {
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
+
+    window.location.hash = '#deck/default/0'
     render(<App />)
 
     await waitFor(() => {
@@ -40,11 +70,11 @@ describe('App', () => {
     })
   })
 
-  it('switches to editor view when hash is #editor', async () => {
-    const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
+  it('switches to editor view when hash is #deck/default/editor', async () => {
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
 
-    window.location.hash = '#editor'
+    window.location.hash = '#deck/default/editor'
     render(<App />)
 
     await waitFor(() => {
@@ -52,11 +82,11 @@ describe('App', () => {
     })
   })
 
-  it('switches to overview when hash is #overview', async () => {
-    const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
+  it('switches to overview when hash is #deck/default/overview', async () => {
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
 
-    window.location.hash = '#overview'
+    window.location.hash = '#deck/default/overview'
     render(<App />)
 
     await waitFor(() => {
@@ -64,27 +94,37 @@ describe('App', () => {
     })
   })
 
-  it('loads markdown on mount', async () => {
-    const { loadMarkdown } = await import('./core/loader')
-    const mockMarkdown = '# Test Slide'
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: mockMarkdown })
+  it('loads deck on mount when deckId in route', async () => {
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Test Slide')
 
+    window.location.hash = '#deck/default/0'
     render(<App />)
 
     await waitFor(() => {
-      expect(loadMarkdown).toHaveBeenCalledOnce()
+      expect(loadDeck).toHaveBeenCalledWith('default')
     })
   })
 
-  it('handles file drop for .md files', async () => {
-    const { loadMarkdown, saveToLocalStorage } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
+  it('calls migrateOldStorage on mount', async () => {
+    const { migrateOldStorage, loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
 
+    render(<App />)
+
+    expect(migrateOldStorage).toHaveBeenCalledOnce()
+  })
+
+  it('handles file drop for .md files', async () => {
+    const { loadDeck, saveDeckDraft } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
+
+    window.location.hash = '#deck/default/0'
     render(<App />)
 
     // Wait for initial load
     await waitFor(() => {
-      expect(loadMarkdown).toHaveBeenCalled()
+      expect(loadDeck).toHaveBeenCalled()
     })
 
     // Create a markdown file with mocked text() method
@@ -112,19 +152,20 @@ describe('App', () => {
     window.dispatchEvent(dropEvent)
 
     await waitFor(() => {
-      expect(saveToLocalStorage).toHaveBeenCalledWith('# Dropped Slide')
+      expect(saveDeckDraft).toHaveBeenCalledWith('default', '# Dropped Slide')
     })
   })
 
   it('rejects file drop for non-markdown files', async () => {
-    const { loadMarkdown, saveToLocalStorage } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '' })
+    const { loadDeck, saveDeckDraft } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Slide 1')
 
+    window.location.hash = '#deck/default/0'
     render(<App />)
 
     // Wait for initial load
     await waitFor(() => {
-      expect(loadMarkdown).toHaveBeenCalled()
+      expect(loadDeck).toHaveBeenCalled()
     })
 
     // Create a non-markdown file
@@ -145,20 +186,21 @@ describe('App', () => {
 
     window.dispatchEvent(dropEvent)
 
-    // saveToLocalStorage should not be called — use waitFor with a short timeout
+    // saveDeckDraft should not be called — use waitFor with a short timeout
     // to give any async handlers time to execute, then assert negative
     await waitFor(
       () => {
-        expect(saveToLocalStorage).not.toHaveBeenCalled()
+        expect(saveDeckDraft).not.toHaveBeenCalled()
       },
       { timeout: 200 }
     )
   })
 
   it('provides SlideContext to children', async () => {
-    const { loadMarkdown } = await import('./core/loader')
-    vi.mocked(loadMarkdown).mockResolvedValue({ markdown: '# Test Slide' })
+    const { loadDeck } = await import('./core/loader')
+    vi.mocked(loadDeck).mockReturnValue('# Test Slide')
 
+    window.location.hash = '#deck/default/0'
     const { container } = render(<App />)
 
     // Verify the app renders without errors, which means context is provided

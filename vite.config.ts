@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { vitePluginDevWrite } from './vite-plugin-dev-write'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), vitePluginDevWrite()],
   build: {
     rollupOptions: {
       output: {

@@ -5,6 +5,9 @@ import {
   loadFromUrl,
   loadMarkdown,
   getDefaultSlides,
+  loadDeck,
+  saveDeckDraft,
+  migrateOldStorage,
   STORAGE_KEY,
 } from './loader'
 
@@ -82,5 +85,33 @@ describe('loadMarkdown', () => {
 
     const result = await loadMarkdown()
     expect(result).toEqual({ markdown: getDefaultSlides() })
+  })
+})
+
+describe('loadDeck', () => {
+  it('returns localStorage draft when present', () => {
+    localStorage.setItem('marko-pollo-deck-my-talk', '# Draft')
+    const result = loadDeck('my-talk')
+    expect(result).toBe('# Draft')
+  })
+
+  it('returns null for unknown deck', () => {
+    expect(loadDeck('nonexistent')).toBeNull()
+  })
+})
+
+describe('saveDeckDraft', () => {
+  it('writes to deck-specific key', () => {
+    saveDeckDraft('my-talk', '# Updated')
+    expect(localStorage.getItem('marko-pollo-deck-my-talk')).toBe('# Updated')
+  })
+})
+
+describe('migration', () => {
+  it('migrates old key to default deck', () => {
+    localStorage.setItem('marko-pollo-slides', '# Old Content')
+    migrateOldStorage()
+    expect(localStorage.getItem('marko-pollo-deck-default')).toBe('# Old Content')
+    expect(localStorage.getItem('marko-pollo-slides')).toBeNull()
   })
 })

@@ -6,46 +6,93 @@ import {
   SlideDispatchContext,
 } from './core/store'
 import { createKeyboardHandler } from './core/keyboard'
-import { loadMarkdown } from './core/loader'
-import { useHashRouting, useFileDrop } from './core/hooks'
+import { useRoute } from './core/route'
+import { deckRegistry } from './core/deckRegistry'
+import { loadDeck, migrateOldStorage } from './core/loader'
+import { useFileDrop } from './core/hooks'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { exportMarkdown } from './core/exporter'
 
 const PresentationView = lazy(() => import('./views/PresentationView').then(m => ({ default: m.PresentationView })))
 const EditorView = lazy(() => import('./views/EditorView').then(m => ({ default: m.EditorView })))
 const OverviewGrid = lazy(() => import('./views/OverviewGrid').then(m => ({ default: m.OverviewGrid })))
+const PickerView = lazy(() => import('./views/PickerView').then(m => ({ default: m.PickerView })))
 
 export default function App() {
   const [state, dispatch] = useReducer(slideReducer, initialState)
-  const [view, setView] = useHashRouting()
+  const [route, setRoute] = useRoute()
   const [externalUrl, setExternalUrl] = useState<string | null>(null)
 
-  useFileDrop(dispatch)
+  useFileDrop(dispatch, state.currentDeck)
 
-  // Load markdown on mount
+  // Migrate old localStorage format on mount
   useEffect(() => {
-    loadMarkdown()
-      .then((result) => {
-        dispatch({ type: 'SET_MARKDOWN', markdown: result.markdown })
-        if (result.sourceUrl) {
-          setExternalUrl(result.sourceUrl)
-        }
-      })
-      .catch((error) => {
-        console.error('Failed to load markdown:', error)
-      })
+    migrateOldStorage()
   }, [])
+
+  // Load deck when route.deckId changes
+  useEffect(() => {
+    if (route.view === 'picker') {
+      dispatch({ type: 'UNLOAD_DECK' })
+      return
+    }
+
+    const deckId = route.deckId
+    const markdown = loadDeck(deckId)
+
+    if (markdown) {
+      dispatch({ type: 'LOAD_DECK', deckId, markdown })
+    } else {
+      // Deck not found, redirect to picker
+      setRoute({ view: 'picker' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.view === 'picker' ? null : route.deckId, route.view])
+
+  // Global Ctrl+S / Cmd+S save shortcut (separate from createKeyboardHandler, so it works inside CodeMirror)
+  useEffect(() => {
+    if (route.view === 'picker' || !state.rawMarkdown) return
+
+    const handleSave = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        exportMarkdown(state.rawMarkdown, state.deckMetadata?.title, state.currentDeck ?? undefined)
+      }
+    }
+    window.addEventListener('keydown', handleSave)
+    return () => window.removeEventListener('keydown', handleSave)
+  }, [state.rawMarkdown, state.deckMetadata?.title, state.currentDeck, route.view])
 
   // Keyboard handler
   useEffect(() => {
     const handler = createKeyboardHandler({
-      nextSlide: () => dispatch({ type: 'NEXT_SLIDE' }),
-      prevSlide: () => dispatch({ type: 'PREV_SLIDE' }),
-      firstSlide: () => dispatch({ type: 'GO_TO_SLIDE', index: 0 }),
-      lastSlide: () =>
-        dispatch({
-          type: 'GO_TO_SLIDE',
-          index: state.slides.length - 1,
-        }),
+      nextSlide: () => {
+        dispatch({ type: 'NEXT_SLIDE' })
+        if (route.view === 'presentation') {
+          const newIndex = Math.min(state.currentIndex + 1, state.slides.length - 1)
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: newIndex })
+        }
+      },
+      prevSlide: () => {
+        dispatch({ type: 'PREV_SLIDE' })
+        if (route.view === 'presentation') {
+          const newIndex = Math.max(state.currentIndex - 1, 0)
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: newIndex })
+        }
+      },
+      firstSlide: () => {
+        dispatch({ type: 'GO_TO_SLIDE', index: 0 })
+        if (route.view === 'presentation') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: 0 })
+        }
+      },
+      lastSlide: () => {
+        const lastIndex = state.slides.length - 1
+        dispatch({ type: 'GO_TO_SLIDE', index: lastIndex })
+        if (route.view === 'presentation') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: lastIndex })
+        }
+      },
       toggleFullscreen: () => {
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen()
@@ -53,30 +100,55 @@ export default function App() {
           document.exitFullscreen()
         }
       },
-      toggleOverview: () =>
-        setView((v) => (v === 'overview' ? 'presentation' : 'overview')),
-      toggleEditor: () =>
-        setView((v) => (v === 'editor' ? 'presentation' : 'editor')),
+      toggleOverview: () => {
+        if (route.view === 'picker') return
+        if (route.view === 'overview') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: state.currentIndex })
+        } else {
+          setRoute({ view: 'overview', deckId: route.deckId })
+        }
+      },
+      toggleEditor: () => {
+        if (route.view === 'picker') return
+        if (route.view === 'editor') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: state.currentIndex })
+        } else {
+          setRoute({ view: 'editor', deckId: route.deckId })
+        }
+      },
       escape: () => {
         if (document.fullscreenElement) {
           document.exitFullscreen()
-        } else if (view !== 'presentation') {
-          setView('presentation')
+        } else if (route.view !== 'presentation' && route.view !== 'picker') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: state.currentIndex })
         }
       },
-      goToSlide: (index: number) =>
-        dispatch({ type: 'GO_TO_SLIDE', index }),
+      goToSlide: (index: number) => {
+        dispatch({ type: 'GO_TO_SLIDE', index })
+        if (route.view === 'presentation') {
+          setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: index })
+        }
+      },
     })
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [view, setView, state.slides.length])
+  }, [route, state.currentIndex, state.slides.length, dispatch, setRoute])
 
   const handleSelectSlide = useCallback(
     (index: number) => {
       dispatch({ type: 'GO_TO_SLIDE', index })
-      setView('presentation')
+      if (route.view !== 'picker') {
+        setRoute({ view: 'presentation', deckId: route.deckId, slideIndex: index })
+      }
     },
-    [dispatch, setView]
+    [dispatch, route, setRoute]
+  )
+
+  const handleSelectDeck = useCallback(
+    (deckId: string) => {
+      setRoute({ view: 'presentation', deckId, slideIndex: 0 })
+    },
+    [setRoute]
   )
 
   return (
@@ -126,9 +198,12 @@ export default function App() {
             </div>
           )}
           <Suspense fallback={<div style={{ background: 'var(--mp-bg)', width: '100vw', height: '100vh' }} />}>
-            {view === 'presentation' && <PresentationView />}
-            {view === 'editor' && <EditorView />}
-            {view === 'overview' && (
+            {route.view === 'picker' && (
+              <PickerView entries={deckRegistry} onSelectDeck={handleSelectDeck} />
+            )}
+            {route.view === 'presentation' && <PresentationView />}
+            {route.view === 'editor' && <EditorView />}
+            {route.view === 'overview' && (
               <OverviewGrid onSelectSlide={handleSelectSlide} />
             )}
           </Suspense>

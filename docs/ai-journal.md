@@ -442,11 +442,130 @@ Claude Code hooks are configured in `settings.json` (not a `.claude/hooks/` dire
 
 ---
 
+## 2026-02-21 — Cohesive Feature Suite Implementation (Entry #8)
+
+**What happened:** Full implementation of a 4-phase cohesive feature suite that added GitHub Pages deployment, multi-presentation folders, file export, and editor persistence. This was the largest coordinated feature session to date — 20 commits across 4 interconnected phases, executed by the full team working in parallel.
+
+**Cohesive implementation plan:** `docs/plans/2026-02-20-cohesive-implementation.md`
+
+**Phases implemented:**
+
+**Phase 1: GitHub Pages Auto-Deploy (CI-only)**
+- Added Playwright E2E tests to CI pipeline
+- Added GitHub Pages deploy job gated on CI success
+- No application code changed — pure infrastructure
+
+**Phase 2: Multi-Presentation Folders (Architectural foundation)**
+- Created `presentations/` directory with 4 example decks (default, intro-to-typescript, architecture-patterns, getting-started)
+- Built `deckRegistry.ts` — build-time presentation discovery via `import.meta.glob`
+- Built `route.ts` — deck-scoped hash routing (`#deck/{id}/{n}`, `#deck/{id}/editor`, `#deck/{id}/overview`)
+- Added `useRoute` hook with cycle guard for bidirectional hash sync
+- Extended store with `LOAD_DECK`/`UNLOAD_DECK` actions and `currentDeck` state field
+- Updated loader for per-deck localStorage with migration from old key format
+- Created `PickerView` — responsive deck card grid with keyboard accessibility
+- Rewired `App.tsx` with new routing, deck loading, and 4-view Suspense rendering
+- Rewrote all E2E tests for new deck-scoped routing
+
+**Phase 3: File Export**
+- Built `exporter.ts` — slugify, blob download, File System Access API fallback
+- Added global `Ctrl+S`/`Cmd+S` shortcut that works even inside CodeMirror editor
+- Added export button and save indicator to editor toolbar
+- Updated CSP for `blob:` directive
+
+**Phase 4: Editor Persistence**
+- Built `vite-plugin-dev-write.ts` — Vite dev server plugin for writing markdown files to disk with path validation
+- Built `token-store.ts` — GitHub PAT management (sessionStorage/localStorage with explicit user opt-in)
+- Built `github-api.ts` — typed fetch wrappers for 6 GitHub REST API endpoints (default branch, file contents, branch head, create branch, update file, create PR)
+- Built `persistence.ts` — environment detection (dev/github-pages/unknown) and orchestrated save flows
+- Built `SaveButton` (5-state component) and `GitHubAuthModal` (token input with reveal toggle and "Remember" checkbox)
+- Wired persistence into EditorView with environment-aware save behavior
+- Updated CSP for GitHub API (`connect-src` with `api.github.com`)
+
+**Team coordination pattern:**
+
+This session used **parallel dispatch** — all 5 agents were dispatched simultaneously after the implementation was complete:
+
+| Agent | Task | Focus |
+|-------|------|-------|
+| Ada | Architecture review | Routing, state management, component boundaries |
+| Rex | Frontend quality | Visual fidelity, CSS, component patterns |
+| Sage | Security review | GitHub tokens, API calls, dev-write plugin, CSP |
+| Turing | QA & testing | E2E tests, integration tests, build verification |
+| Eliza | AI instrumentation | CLAUDE.md accuracy, agent definitions, journal |
+
+This was the first time all 5 agents ran truly in parallel on the same codebase. The team lead dispatched tasks, then waited for all agents to report back before committing.
+
+**New source files added (17 total):**
+- `src/core/route.ts` + test — Deck-scoped routing with useRoute hook
+- `src/core/deckRegistry.ts` + test — Build-time deck discovery
+- `src/core/exporter.ts` + test — File export (download + File System Access)
+- `src/core/token-store.ts` + test — GitHub PAT storage
+- `src/core/github-api.ts` + test — GitHub REST API wrappers
+- `src/core/persistence.ts` + test — Environment-aware save orchestration
+- `src/core/hooks.ts` — useFileDrop custom hook
+- `src/views/PickerView.tsx` + test — Deck picker view
+- `src/components/SaveButton.tsx` + test — Save with 5-state indicator
+- `src/components/GitHubAuthModal.tsx` + test — GitHub auth modal
+- `src/components/ErrorBoundary.tsx` + test — Error boundary
+- `vite-plugin-dev-write.ts` — Vite plugin for dev file persistence
+- `presentations/*/slides.md` — 4 example presentation decks
+
+**AI instrumentation updates (this session):**
+
+Eliza reviewed all project instrumentation and made these concrete changes:
+
+1. **CLAUDE.md updated** — Architecture section updated from "Three views" to "Four views" with deck-scoped routing. Tech stack updated to reflect Vite 6, React 19, persistence layer, Playwright E2E, and CI/CD. Key Documents now includes the cohesive implementation plan.
+
+2. **Agent definitions updated (5 files)** — All agents' Key Documents sections now reference the cohesive implementation plan alongside the original plan. Sage's threat model expanded with 4 new entries for GitHub token exposure, GitHub API SSRF, dev-write path traversal, and base64 encoding safety.
+
+3. **`/implement-task` command updated** — Now references both implementation plans so agents can implement tasks from either plan.
+
+4. **Project structure section updated** — Reflects new `presentations/` directory and cohesive plan file.
+
+**What worked well:**
+- **Dependency-aware ordering** — The cohesive plan's Phase 2 (multi-deck) was the right architectural foundation. Phases 3 and 4 built cleanly on top without rework.
+- **Parallel team dispatch** — Dispatching all 5 agents simultaneously for post-implementation review maximized throughput and caught issues from every angle.
+- **Cohesive plan quality** — The plan was detailed enough that implementation could proceed task-by-task with minimal ambiguity. Each task had failing tests, implementation, and commit messages pre-specified.
+- **Environment-aware persistence** — The 3-tier persistence strategy (dev → file write, GitHub Pages → API PR, unknown → download) was well-designed and didn't require a dedicated backend.
+
+**What could be improved:**
+- **CLAUDE.md went stale during implementation** — Between the original 16-task plan and the cohesive plan, the architecture description in CLAUDE.md fell behind. A new session would have seen "Three views" when there are now four. Lesson: CLAUDE.md should be updated as part of the implementation plan, not just during post-implementation review.
+- **Agent definitions lagged too** — The cohesive plan introduced entirely new attack surfaces (GitHub tokens, API calls, dev file writes) that Sage's threat model didn't cover until this review. Lesson: when a plan introduces new security-relevant features, Sage's threat model should be updated in the plan itself.
+- **No skill formalization yet** — The "verify-build" and "full-test" workflows identified in Entry #5 as skill candidates still haven't been created. The team uses these patterns every session but they remain ad-hoc.
+
+**Commits (cohesive implementation):**
+```
+8a0548e fix: resolve TypeScript build errors and lint warnings
+6ca7bef feat: update CSP for GitHub API and add persistence E2E tests
+0407732 feat: wire persistence into editor with environment-aware save
+e71052f feat: add SaveButton and GitHubAuthModal components
+cdb0748 feat: add persistence module with environment detection and save flows
+4a97ca1 feat: add GitHub API module with typed fetch wrappers
+d27efd0 feat: add token-store module for GitHub PAT management
+e6a65bf feat: add Vite dev-write plugin for local file persistence
+9186d4d feat: add blob: to CSP and E2E tests for Ctrl+S download
+9bf00e5 feat: add export button and save indicator to editor toolbar
+57af1ca feat: add Ctrl+S/Cmd+S global save shortcut (works inside CodeMirror)
+11eed6a feat: add exporter module with slugify, download, and File System Access API
+c6ad85e test: rewrite E2E tests for deck-scoped routing
+ff0c83a test: add URL.createObjectURL/revokeObjectURL mocks for jsdom
+fe0f0df test: update test fixtures for currentDeck state field
+8f8753b feat: rewire App.tsx with deck-scoped routing and LOAD_DECK
+1e38860 feat: add PickerView with responsive deck card grid
+6e9539a feat: add per-deck localStorage loading with migration from old key
+8c46ab9 feat: add LOAD_DECK/UNLOAD_DECK actions to store
+98fcc5f feat: add useRoute hook with cycle guard for bidirectional hash sync
+```
+
+**Outcome:** The application evolved from a single-deck slide viewer to a multi-deck presentation platform with environment-aware persistence, file export, and GitHub integration. The team coordination pattern — parallel implementation dispatch followed by parallel review — is now the proven workflow for feature batches.
+
+---
+
 ## AI-Native Project Structure
 
 ```
 marko-pollo/
-├── CLAUDE.md                          # Project context for AI agents (79 lines)
+├── CLAUDE.md                          # Project context for AI agents (~85 lines)
 ├── .claude/
 │   ├── settings.json                  # Permissions (incl. Playwright, tsc)
 │   ├── TEAM_WORKFLOW.md               # Team delegation rules & anti-patterns
@@ -459,12 +578,19 @@ marko-pollo/
 │   └── commands/
 │       ├── team-review.md             # /team-review (enforces team infra)
 │       ├── review-docs.md             # /review-docs
-│       └── implement-task.md          # /implement-task N
+│       └── implement-task.md          # /implement-task N (both plans)
+├── presentations/                     # Presentation decks (build-time discovery)
+│   ├── default/slides.md
+│   ├── intro-to-typescript/slides.md
+│   ├── architecture-patterns/slides.md
+│   └── getting-started/slides.md
+├── vite-plugin-dev-write.ts           # Dev server file persistence plugin
 └── docs/
     ├── ai-journal.md                  # This file
     └── plans/
         ├── ...-design.md              # Design specification
-        └── ...-implementation.md      # Implementation plan
+        ├── ...-implementation.md       # Original 16-task plan
+        └── ...-cohesive-implementation.md  # 4-phase feature suite plan
 ```
 
 **How the team works:** The team lead (Marco) coordinates all work. Agents are spawned on-demand for specific tasks — they're not persistent processes. Each agent reads the project documents, does its specialized work, reports findings, and shuts down. The team can be reassembled at any time with `/team-review`.

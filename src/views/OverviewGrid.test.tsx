@@ -44,6 +44,7 @@ describe('OverviewGrid', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     const onSelectSlide = vi.fn()
@@ -74,6 +75,7 @@ describe('OverviewGrid', () => {
       ],
       deckMetadata: {},
       currentIndex: 1, // Second slide is active
+      currentDeck: null,
     }
 
     const onSelectSlide = vi.fn()
@@ -112,6 +114,7 @@ describe('OverviewGrid', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     const onSelectSlide = vi.fn()
@@ -147,6 +150,7 @@ describe('OverviewGrid', () => {
       ],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     const onSelectSlide = vi.fn()
@@ -163,6 +167,7 @@ describe('OverviewGrid', () => {
       slides: [],
       deckMetadata: {},
       currentIndex: 0,
+      currentDeck: null,
     }
 
     const onSelectSlide = vi.fn()

@@ -1,6 +1,7 @@
 # Marko Pollo - Design Document
 
 **Date:** 2026-02-20
+**Updated:** 2026-02-21 (post-cohesive implementation)
 **Status:** Approved
 
 ## Overview
@@ -10,7 +11,8 @@ Marko Pollo is a static single-page web application for presenting beautiful-loo
 ## Requirements
 
 ### Core Features
-- Single `.md` file with `---` separators as the slide format
+- Multiple presentation decks in `presentations/*/slides.md`, discovered at build time
+- Single `.md` file per deck with `---` separators as the slide format
 - In-browser live editor with split-pane preview
 - Custom branded rendering of titles, subtitles, bullet points, code blocks
 - Syntax highlighting with line focus, diffs, and line highlighting
@@ -20,32 +22,46 @@ Marko Pollo is a static single-page web application for presenting beautiful-loo
 - Responsive images
 
 ### Presentation Features
+- Deck picker landing page (browse all available presentations)
 - Keyboard navigation (arrows, space, page up/down)
 - Fullscreen mode
 - Overview grid (thumbnail view of all slides)
 - Subtle slide transitions (horizontal slide + opacity fade)
 - Progress bar and slide counter
 
+### Editor Features
+- Markdown file export via Ctrl+S / Cmd+S (File System Access API with download fallback)
+- Export button in editor toolbar
+- Environment-aware persistence:
+  - **Dev server:** Direct file write via Vite plugin (`/__marko-pollo/write-file`)
+  - **GitHub Pages:** GitHub API flow — creates branch, updates file, opens pull request
+  - **Unknown:** Falls back to file download
+- GitHub Personal Access Token authentication (session or local storage)
+
 ### Non-Goals
-- No export (PDF, PPTX, etc.) — the web app is the delivery format
+- No PDF/PPTX export — the web app is the delivery format; markdown source export is supported
 - No presenter notes / dual-screen presenter mode
 - No rich animations (per-element fly-in, etc.)
 - No light mode — dark is the brand identity
-- No backend / user accounts / cloud storage
+- No user accounts — GitHub PAT is optional and stored client-side only
 
 ## Technology Stack
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| Build | Vite + React 18 + TypeScript | Fast HMR, mature ecosystem, strong typing |
+| Build | Vite 6 + React 19 + TypeScript | Fast HMR, mature ecosystem, strong typing |
 | Markdown pipeline | unified -> remark-parse -> remark-rehype -> react-markdown | Most extensible AST pipeline; custom components per element |
-| Code highlighting | Shiki (@shikijs/rehype + @shikijs/transformers) | VS Code-grade highlighting; built-in diff, focus, line highlight |
+| Code highlighting | Shiki (@shikijs/transformers) | VS Code-grade highlighting; built-in diff, focus, line highlight |
 | Diagrams | Mermaid.js v11 (client-side, startOnLoad: false) | 20+ diagram types; lazy render per slide; themeable |
 | Emojis | remark-emoji | Converts :emoji: shortcodes to unicode |
 | GFM | remark-gfm | Tables, strikethrough, task lists, autolinks |
+| Sanitization | rehype-sanitize | XSS protection for rendered markdown |
 | Live editor | CodeMirror 6 (@uiw/react-codemirror + @codemirror/lang-markdown) | Smaller bundle than Monaco (~400KB vs ~3MB), better mobile support |
 | Styling | CSS Modules + CSS custom properties | Scoped styles, no runtime overhead, brand variables |
 | Transitions | CSS transitions + View Transitions API (with fallback) | Subtle, performant slide transitions without a library |
+| Persistence | Vite dev plugin + GitHub REST API + File System Access API | Environment-aware save; dev writes to disk, prod creates PRs |
+| Testing | Vitest + @testing-library/react + Playwright | Unit, component, and E2E testing |
+| CI/CD | GitHub Actions | Build, test, deploy to GitHub Pages on push to main |
 
 ### Key Lessons from Existing Frameworks
 - **From Slidev:** Vite-based build, frontmatter per slide, progressive complexity
@@ -59,76 +75,129 @@ Marko Pollo is a static single-page web application for presenting beautiful-loo
 
 | View | Route | Description |
 |------|-------|-------------|
-| PresentationView | `/#/{n}` | Fullscreen slide display. One slide at a time. Keyboard nav. |
-| EditorView | `/#/edit` | Split pane: CodeMirror left, live slide preview right. |
-| OverviewGrid | `/#/overview` | Thumbnail grid. Click to jump to any slide. |
+| PickerView | `#/` (root) | Deck picker landing page. Cards for each presentation. |
+| PresentationView | `#deck/{id}/{n}` | Fullscreen slide display. One slide at a time. Keyboard nav. |
+| EditorView | `#deck/{id}/editor` | Split pane: CodeMirror left, live slide preview right. Save button with persistence. |
+| OverviewGrid | `#deck/{id}/overview` | Thumbnail grid. Click to jump to any slide. |
+
+Routing is deck-scoped: every view (except the picker) operates on a specific deck identified by `{id}`. The `Route` type is a discriminated union parsed from `window.location.hash` by the `useRoute` hook in `src/core/route.ts`.
 
 ### Component Tree
 
 ```
-App
-├── Router (hash-based)
-│   ├── PresentationView
-│   │   ├── SlideFrame (16:9 viewport with CSS scale)
-│   │   │   └── SlideRenderer
-│   │   │       ├── TitleBlock (branded h1/h2)
-│   │   │       ├── BulletList (custom bullets)
-│   │   │       ├── CodeBlock (Shiki-highlighted)
-│   │   │       ├── MermaidDiagram (lazy-rendered)
-│   │   │       ├── ImageBlock (responsive)
-│   │   │       └── TextBlock (paragraphs, emphasis, links)
-│   │   └── SlideNavigation
-│   │       ├── ProgressBar
-│   │       ├── SlideCounter
-│   │       └── NavigationHints
-│   ├── EditorView
-│   │   ├── MarkdownEditor (CodeMirror)
-│   │   └── SlideFrame (preview)
-│   └── OverviewGrid
-│       └── SlideFrame[] (thumbnails)
-└── Core Services
-    ├── MarkdownParser (unified pipeline)
-    ├── SlideStore (React context + useReducer)
-    └── KeyboardManager (global hotkeys)
+App (ErrorBoundary wrapper)
+├── useRoute (hash-based deck-scoped routing)
+├── SlideContext / SlideDispatchContext providers
+│
+├── PickerView (lazy)
+│   └── DeckCard[] (button per presentation)
+│
+├── PresentationView (lazy)
+│   ├── SlideFrame (16:9 viewport with CSS scale)
+│   │   └── ErrorBoundary
+│   │       └── SlideRenderer
+│   │           ├── TitleBlock (branded h1)
+│   │           ├── SubtitleBlock (branded h2)
+│   │           ├── BulletList (custom ul/ol/li)
+│   │           ├── CodeBlock (Shiki-highlighted, async)
+│   │           ├── MermaidDiagram (lazy-rendered)
+│   │           ├── ImageBlock (responsive)
+│   │           ├── TableBlock (branded GFM tables)
+│   │           └── TextBlock (paragraphs, emphasis, links, strikethrough)
+│   └── SlideNavigation
+│       ├── ProgressBar (gradient, ARIA progressbar)
+│       └── SlideCounter
+│
+├── EditorView (lazy)
+│   ├── Toolbar
+│   │   └── SaveButton (idle | saving | saved | error | pr-created)
+│   ├── MarkdownEditor (CodeMirror 6, lazy)
+│   ├── SlideFrame (live preview)
+│   └── GitHubAuthModal (shown when GitHub auth needed)
+│
+└── OverviewGrid (lazy)
+    └── SlideFrame[] (memoized thumbnails)
+
+Core Services
+├── DeckRegistry (build-time glob → DeckEntry[])
+├── Route (hashToRoute / routeToHash / useRoute hook)
+├── MarkdownParser (unified pipeline)
+├── SlideStore (React Context + useReducer)
+├── Loader (per-deck localStorage + registry fallback)
+├── Exporter (File System Access API + download fallback)
+├── Persistence (environment detection + dev/GitHub/download save flows)
+├── TokenStore (GitHub PAT in session/localStorage)
+├── GitHubAPI (typed fetch wrappers for GitHub REST API)
+├── KeyboardManager (global hotkeys)
+└── Highlighter (Shiki singleton with transformers)
 ```
 
 ### Data Flow
 
 ```
-Markdown string
+[App mount / route change]
     |
     v
-MarkdownParser (unified pipeline)
-    |  remark-parse -> remark-gfm -> remark-emoji
-    |  -> remark-slides (custom: split on ---)
-    |  -> remark-rehype -> rehype-shiki
-    |  -> react-markdown with custom components
+useRoute() parses window.location.hash → Route
+    |
+    ├── { view: 'picker' } → render PickerView (shows deckRegistry)
+    |
+    └── { view: *, deckId } → loadDeck(deckId)
+            |
+            ├── localStorage draft (marko-pollo-deck-{id}) if present
+            └── deckRegistry entry (build-time bundled markdown)
+                    |
+                    v
+            dispatch({ type: 'LOAD_DECK', deckId, markdown })
+                    |
+                    v
+            MarkdownParser (unified pipeline)
+                |  remark-parse -> remark-gfm -> remark-emoji
+                |  -> remark-slides (custom: split on ---)
+                |  -> remark-rehype -> rehype-sanitize
+                |  -> react-markdown with custom components
+                |
+                v
+            Slide[] array (each slide = parsed markdown subtree)
+                |
+                v
+            SlideStore (context): slides[], currentIndex, rawMarkdown, currentDeck
+                |
+                v
+            SlideRenderer (renders slides[currentIndex])
+
+[Save flow (Ctrl+S or Save button)]
     |
     v
-Slide[] array (each slide = parsed AST subtree)
+detectEnvironment() → 'dev' | 'github-pages' | 'unknown'
     |
-    v
-SlideStore (context): slides[], currentIndex, rawMarkdown
-    |
-    v
-SlideRenderer (renders slides[currentIndex])
+    ├── dev → POST /__marko-pollo/write-file (Vite plugin writes to disk)
+    ├── github-pages → GitHub API (branch → update file → open PR)
+    └── unknown → exportMarkdown() (File System Access API / download fallback)
 ```
 
 ### State Management
 
-React Context + `useReducer`. No external state library.
+React Context + `useReducer`. No external state library. Two contexts: `SlideContext` (state) and `SlideDispatchContext` (dispatch). Hooks: `useSlides()`, `useSlideDispatch()`.
 
 **State shape:**
 ```typescript
 interface SlideState {
   rawMarkdown: string
   slides: SlideData[]
+  deckMetadata: DeckMetadata
   currentIndex: number
+  currentDeck: string | null    // active deck ID, null when at picker
+}
+
+interface DeckMetadata {
+  title?: string
+  author?: string
 }
 
 interface SlideData {
-  ast: Node          // parsed AST subtree for this slide
-  metadata: {        // per-slide frontmatter / HTML comment directives
+  content: string     // raw markdown for this slide section
+  metadata: {         // per-slide HTML comment directives
     bg?: string
     class?: string
     layout?: 'default' | 'center'
@@ -137,7 +206,7 @@ interface SlideData {
 }
 ```
 
-**Actions:** `SET_MARKDOWN`, `NEXT_SLIDE`, `PREV_SLIDE`, `GO_TO_SLIDE`
+**Actions:** `SET_MARKDOWN`, `LOAD_DECK`, `UNLOAD_DECK`, `NEXT_SLIDE`, `PREV_SLIDE`, `GO_TO_SLIDE`
 
 ### Markdown Parsing Pipeline
 
@@ -162,7 +231,7 @@ unified()
   })
 ```
 
-Rendering is handled by `react-markdown` with a `components` map that routes each HTML element to a custom React component (TitleBlock, BulletList, CodeBlock, etc.).
+Rendering is handled by `react-markdown` with a `components` map that routes each HTML element to a custom React component (TitleBlock, BulletList, CodeBlock, TableBlock, etc.). Code highlighting is performed asynchronously by a shared Shiki singleton (`src/core/highlighter.ts`) rather than as a rehype plugin, allowing non-blocking rendering.
 
 ### Custom remark-slides Plugin
 
@@ -286,16 +355,23 @@ Dark, cinematic, developer-native. Slides should feel like a polished keynote at
 | Escape | Exit fullscreen / overview / back to presentation |
 | 1-9 | Jump to slide 1-9 |
 | G + number + Enter | Go to any slide number |
+| Ctrl+S / Cmd+S | Export/save markdown (global — works from all views including editor) |
 
 ## Content Loading
 
-Priority order (highest wins):
+### Deck Discovery
 
-1. **Editor / file drop** — user edits or drops a .md file
-2. **URL param** — `/#/?url=https://example.com/slides.md`
-3. **Bundled default** — `src/assets/slides.md` imported via Vite `?raw`
+Presentations live in `presentations/*/slides.md`. Vite's `import.meta.glob` discovers all decks at build time and bundles them into a `deckRegistry` (array of `DeckEntry` objects with id, title, author, slideCount, rawMarkdown).
 
-Current markdown persisted to `localStorage` so refreshing preserves editor changes.
+### Per-Deck Loading Priority (highest wins)
+
+1. **Editor / file drop** — user edits in the editor or drops a `.md` file
+2. **localStorage draft** — per-deck key `marko-pollo-deck-{id}` preserves editor changes across refreshes
+3. **Registry entry** — build-time bundled markdown from `presentations/{id}/slides.md`
+
+### Legacy Migration
+
+On first load, `migrateOldStorage()` moves the old single-deck key (`marko-pollo-slides`) to `marko-pollo-deck-default`.
 
 ## Slide Viewport
 
@@ -309,12 +385,27 @@ marko-pollo/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
+├── vite-plugin-dev-write.ts          (Vite dev server file-write plugin)
+├── playwright.config.ts
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    (build + test + GitHub Pages deploy)
+├── presentations/                    (deck content — each subfolder = one deck)
+│   ├── default/slides.md
+│   ├── intro-to-typescript/slides.md
+│   ├── architecture-patterns/slides.md
+│   └── getting-started/slides.md
+├── e2e/
+│   └── app.spec.ts                   (Playwright E2E tests)
 ├── public/
-│   └── fonts/                      (Inter + JetBrains Mono)
+│   └── fonts/                        (Inter + JetBrains Mono)
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx
+│   ├── test-setup.ts
+│   ├── integration.test.tsx
 │   ├── views/
+│   │   ├── PickerView.tsx            (deck selection landing page)
 │   │   ├── PresentationView.tsx
 │   │   ├── EditorView.tsx
 │   │   └── OverviewGrid.tsx
@@ -327,23 +418,35 @@ marko-pollo/
 │   │   ├── CodeBlock.tsx
 │   │   ├── MermaidDiagram.tsx
 │   │   ├── ImageBlock.tsx
-│   │   └── MarkdownEditor.tsx
+│   │   ├── TableBlock.tsx            (branded GFM table components)
+│   │   ├── MarkdownEditor.tsx
+│   │   ├── SaveButton.tsx            (multi-state save indicator)
+│   │   ├── GitHubAuthModal.tsx       (GitHub PAT input modal)
+│   │   └── ErrorBoundary.tsx         (error boundary with fallback UI)
 │   ├── core/
 │   │   ├── parser.ts
 │   │   ├── plugins/
 │   │   │   └── remark-slides.ts
-│   │   ├── store.ts
+│   │   ├── store.ts                  (SlideContext + useReducer)
+│   │   ├── route.ts                  (Route type + useRoute hook)
+│   │   ├── deckRegistry.ts           (build-time deck discovery)
+│   │   ├── loader.ts                 (per-deck loading + localStorage)
+│   │   ├── exporter.ts              (file download + File System Access API)
+│   │   ├── persistence.ts           (environment detection + save flows)
+│   │   ├── github-api.ts            (GitHub REST API typed wrappers)
+│   │   ├── token-store.ts           (GitHub PAT session/localStorage)
+│   │   ├── highlighter.ts           (shared Shiki instance)
 │   │   ├── keyboard.ts
-│   │   └── loader.ts
-│   ├── styles/
-│   │   ├── variables.css
-│   │   ├── global.css
-│   │   ├── slides.module.css
-│   │   ├── code.module.css
-│   │   ├── editor.module.css
-│   │   └── overview.module.css
-│   └── assets/
-│       └── slides.md
+│   │   └── hooks.ts                 (useFileDrop)
+│   └── styles/
+│       ├── variables.css
+│       ├── global.css
+│       ├── slides.module.css
+│       ├── code.module.css
+│       ├── editor.module.css
+│       ├── overview.module.css
+│       ├── picker.module.css
+│       └── modal.module.css
 └── docs/
     └── plans/
 ```
@@ -352,18 +455,27 @@ marko-pollo/
 
 ### Production
 ```
-react, react-dom
-react-markdown
+react (19.1), react-dom
+react-markdown (10.x)
 unified, remark-parse, remark-rehype, remark-gfm, remark-emoji
-rehype-raw
-shiki, @shikijs/rehype, @shikijs/transformers
-mermaid
+rehype-sanitize
+shiki, @shikijs/transformers
+mermaid (11.x)
 @uiw/react-codemirror, @codemirror/lang-markdown, @codemirror/view, @codemirror/state
 ```
 
 ### Development
 ```
-vite
-typescript
+vite (6.x), @vitejs/plugin-react
+typescript (~5.8)
+vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event
+@playwright/test
 @types/react, @types/react-dom
 ```
+
+### Build-Time Code Splitting
+
+Vite is configured to split large vendor bundles:
+- `vendor-mermaid` — Mermaid.js (lazy-loaded)
+- `vendor-shiki` — Shiki + transformers
+- `vendor-codemirror` — CodeMirror packages

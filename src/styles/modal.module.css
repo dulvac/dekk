@@ -1,0 +1,191 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(11, 13, 23, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: var(--mp-surface);
+  border: 1px solid rgba(107, 115, 148, 0.3);
+  border-radius: 8px;
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.modalTitle {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--mp-text);
+  margin-bottom: 12px;
+  font-family: var(--mp-font-body);
+}
+
+.modalDescription {
+  font-size: 14px;
+  color: var(--mp-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+  font-family: var(--mp-font-body);
+}
+
+.modalDescription code {
+  background-color: var(--mp-code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--mp-font-mono);
+  font-size: 13px;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mp-text);
+  font-family: var(--mp-font-body);
+}
+
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 60px 10px 12px;
+  background-color: var(--mp-code-bg);
+  border: 1px solid rgba(107, 115, 148, 0.3);
+  border-radius: 4px;
+  color: var(--mp-text);
+  font-size: 14px;
+  font-family: var(--mp-font-mono);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--mp-primary);
+}
+
+.input::placeholder {
+  color: var(--mp-muted);
+}
+
+.revealBtn {
+  position: absolute;
+  right: 8px;
+  padding: 4px 8px;
+  background-color: transparent;
+  border: 1px solid rgba(107, 115, 148, 0.3);
+  border-radius: 3px;
+  color: var(--mp-muted);
+  font-size: 12px;
+  font-family: var(--mp-font-body);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.revealBtn:hover {
+  background-color: rgba(107, 115, 148, 0.1);
+  color: var(--mp-text);
+}
+
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--mp-text);
+  font-family: var(--mp-font-body);
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--mp-primary);
+  cursor: pointer;
+}
+
+.checkboxWarning {
+  font-size: 12px;
+  color: var(--mp-muted);
+  margin-left: 24px;
+  line-height: 1.4;
+  font-family: var(--mp-font-body);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.cancelBtn {
+  padding: 8px 16px;
+  background-color: transparent;
+  border: 1px solid rgba(107, 115, 148, 0.3);
+  border-radius: 4px;
+  color: var(--mp-text);
+  font-size: 14px;
+  font-family: var(--mp-font-body);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background-color: rgba(107, 115, 148, 0.1);
+}
+
+.authorizeBtn {
+  padding: 8px 16px;
+  background-color: var(--mp-primary);
+  border: none;
+  border-radius: 4px;
+  color: var(--mp-text);
+  font-size: 14px;
+  font-family: var(--mp-font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.authorizeBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.authorizeBtn:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.authorizeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

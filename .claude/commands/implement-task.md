@@ -3,7 +3,9 @@ description: Implement a specific task from the implementation plan (pass task n
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
-Implement the specified task from `docs/plans/2026-02-20-marko-pollo-implementation.md`.
+Implement the specified task from the implementation plans. Check both:
+- `docs/plans/2026-02-20-marko-pollo-implementation.md` (original 16-task plan, Tasks 1-16)
+- `docs/plans/2026-02-20-cohesive-implementation.md` (cohesive feature suite, Tasks 1.1-4.8)
 
 Follow the TDD approach defined in the plan:
 1. Write the failing tests first
