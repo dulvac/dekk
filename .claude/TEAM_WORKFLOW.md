@@ -161,3 +161,30 @@ Stale agents waste resources and clutter the team roster. Follow these rules to 
 4. **Max concurrent agents**: Keep active agent count at 5 or fewer unless parallel work explicitly requires more. Exceeding this without a clear reason is a sign of poor coordination.
 
 5. **Cleanup before commit**: Before committing work at the end of a task cycle, ensure all agents that contributed are shut down cleanly. A clean shutdown confirms the agent's work is complete and logged.
+
+## Issue Swarm Protocol
+
+When `/issue-swarm` is invoked, the team lead orchestrates parallel issue resolution:
+
+1. **Fetch** open issues via `gh issue list --json number,title,labels,body`
+2. **Cap at 5** concurrent agents (hard limit from Max Concurrent Agents rule)
+3. **Map labels to branches**: `bug` -> `fix/`, `documentation` -> `docs/`, default -> `feature/`
+4. **Select agent per issue**:
+   - Bug + frontend/CSS/UI keywords -> Rex
+   - Bug + test/CI/build keywords -> Turing
+   - Bug + security keywords -> Sage
+   - Documentation -> Eliza
+   - Enhancement/default -> Rex
+5. **Name agents**: `{Agent}-issue-{number}` (e.g., `Rex-issue-42`)
+6. **Each agent** works in a worktree (`isolation: "worktree"`), creates branch, implements, tests, pushes, opens PR with `Closes #N`
+7. **Team lead monitors**: Review agent output, send `shutdown_request` on completion
+8. **Log everything** per Communication Logging Protocol
+
+### Swarm Agent Task Template
+
+Each dispatched agent receives:
+- GitHub issue number, title, and full body
+- Target branch name (pre-determined by team lead based on label mapping)
+- Instruction to follow project coding standards (TDD, CSS Modules, conventional commits)
+- Instruction to create PR with `Closes #{issue-number}` in the body on completion
+- References to relevant design docs and implementation plans
