@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Marko Pollo E2E', () => {
   test('root shows presentation picker', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
     // At least the default deck should appear
     const buttons = page.getByRole('button')
@@ -12,14 +12,14 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('clicking a deck card navigates to presentation', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await page.getByRole('button').first().click()
     await expect(page).toHaveURL(/#deck\//)
     await expect(page.locator('h1, h2')).toBeVisible()
   })
 
   test('navigates between slides with arrow keys', async ({ page }) => {
-    await page.goto('/#deck/default/0')
+    await page.goto('./#deck/default/0')
     const counter = page.getByText(/\d+ \/ \d+/)
     await expect(counter).toHaveText(/1 \/ \d+/)
     await page.keyboard.press('ArrowRight')
@@ -27,7 +27,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('E key switches to editor view', async ({ page }) => {
-    await page.goto('/#deck/default/0')
+    await page.goto('./#deck/default/0')
     // Wait for presentation to be fully loaded
     await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
     await page.keyboard.press('e')
@@ -36,7 +36,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('O key switches to overview', async ({ page }) => {
-    await page.goto('/#deck/default/0')
+    await page.goto('./#deck/default/0')
     // Wait for presentation to be fully loaded
     await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
     await page.keyboard.press('o')
@@ -44,13 +44,13 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('progress bar has ARIA attributes', async ({ page }) => {
-    await page.goto('/#deck/default/0')
+    await page.goto('./#deck/default/0')
     const progressbar = page.getByRole('progressbar', { name: 'Slide progress' })
     await expect(progressbar).toBeVisible()
   })
 
   test('browser back returns to picker from deck', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await page.getByRole('button').first().click()
     await expect(page).toHaveURL(/#deck\//)
     await page.goBack()
@@ -58,7 +58,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('Ctrl+S downloads presentation as .md', async ({ page }) => {
-    await page.goto('/#deck/default/0')
+    await page.goto('./#deck/default/0')
     // Wait for presentation to load
     await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
     const [download] = await Promise.all([
@@ -69,7 +69,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('Ctrl+S works from editor view', async ({ page }) => {
-    await page.goto('/#deck/default/editor')
+    await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
     const [download] = await Promise.all([
       page.waitForEvent('download'),
@@ -79,7 +79,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('dev save button triggers file write', async ({ page }) => {
-    await page.goto('/#deck/default/editor')
+    await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
 
     // Mock the dev server write endpoint
@@ -101,7 +101,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('editor edits persist to localStorage across reload', async ({ page }) => {
-    await page.goto('/#deck/default/editor')
+    await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
 
     // Type into the CodeMirror editor
@@ -120,7 +120,7 @@ test.describe('Marko Pollo E2E', () => {
     expect(stored).toContain('# Persisted Slide')
 
     // Reload the page and navigate back to editor
-    await page.goto('/#deck/default/editor')
+    await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
 
     // Verify the persisted content is loaded
@@ -129,7 +129,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('Ctrl+S works from overview view', async ({ page }) => {
-    await page.goto('/#deck/default/overview')
+    await page.goto('./#deck/default/overview')
     // Wait for overview to render slide thumbnails
     await page.waitForTimeout(300)
 
@@ -141,7 +141,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('export button in editor triggers download', async ({ page }) => {
-    await page.goto('/#deck/default/editor')
+    await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
 
     const [download] = await Promise.all([
@@ -152,7 +152,7 @@ test.describe('Marko Pollo E2E', () => {
   })
 
   test('picker shows all presentations from presentations/ folder', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('./')
     await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
 
     // There should be at least 4 decks (default, architecture-patterns, getting-started, intro-to-typescript)

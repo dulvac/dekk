@@ -1,20 +1,22 @@
 import { defineConfig } from '@playwright/test'
 
+const isCI = !!process.env.CI
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: isCI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: isCI ? 'http://localhost:5173/marko-pollo/' : 'http://localhost:5173',
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: isCI ? 'npx vite preview --port 5173 --base /marko-pollo/' : 'npm run dev',
+    url: isCI ? 'http://localhost:5173/marko-pollo/' : 'http://localhost:5173',
+    reuseExistingServer: !isCI,
   },
   projects: [
     {
