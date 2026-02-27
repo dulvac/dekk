@@ -184,41 +184,38 @@ When `/issue-swarm` is invoked, the main orchestrator dispatches a **full agent 
 
 ### Swarm Architecture
 
+The swarm uses a **two-phase pattern**: fast solo implementation, then independent review.
+
 ```
-Orchestrator (you)
-├── lead-issue-42 (worktree) ── creates team "issue-42"
-│   ├── Rex (implement)
-│   ├── Ada (architecture review)
-│   ├── Turing (test & verify)
-│   └── Sage (security review, if needed)
-├── lead-issue-15 (worktree) ── creates team "issue-15"
-│   ├── Rex (implement)
-│   ├── Ada (architecture review)
-│   ├── Turing (test & verify)
-│   └── Sage (security review, if needed)
-└── ... up to 5 issue teams in parallel
+Phase 1: Implement (parallel)              Phase 2: Review (parallel)
+Orchestrator                                Orchestrator
+├── lead-issue-42 (worktree) → PR #N       ├── reviewer-PR-N (Ada/Rex/Sage/Turing/Eliza)
+├── lead-issue-15 (worktree) → PR #M       ├── reviewer-PR-M (Ada/Rex/Sage/Turing/Eliza)
+└── ... up to 5 in parallel                └── ... one reviewer set per PR
 ```
 
 ### Swarm Steps
 
 1. **Fetch** open issues via `gh issue list --json number,title,labels,body` (cap at 5 issues)
 2. **Map labels to branches**: `bug` -> `fix/`, `documentation` -> `docs/`, default -> `feature/`
-3. **Spawn one team lead per issue** via `Task` with `isolation: "worktree"` — all in a single parallel dispatch
-4. **Each team lead**:
-   - Creates a team (`TeamCreate` with `team_name: "issue-{number}"`)
-   - Dispatches Rex to implement, then Ada + Sage to review, then Turing to verify
-   - Iterates on review findings until all agents approve
-   - Commits, pushes, and creates PR with `Closes #{number}`
-   - Shuts down its agents and deletes its team
-5. **Orchestrator monitors** team lead output, collects PR URLs, reports summary
-6. **Log everything** per Communication Logging Protocol
+3. **Phase 1 — Implement**: Spawn one agent per issue via `Task` with `isolation: "worktree"` — all in a single parallel dispatch. Each agent implements the fix, runs tests, commits, pushes, and creates a PR with `Closes #{number}`.
+4. **Phase 2 — Review**: After all PRs are created, dispatch reviewers (Ada, Rex, Sage, Turing, Eliza) against each PR. Reviewers post findings directly on the GitHub PRs.
+5. **Fix review findings**: If reviewers flag issues, dispatch fix agents against the affected PRs.
+6. **Merge**: Once reviews pass, merge all PRs sequentially.
+7. **Verify**: Pull master, run full test suite + build to confirm integration.
+8. **Log everything** per Communication Logging Protocol
 
-### Team Lead Responsibilities (per issue)
+### Why Solo + Review (Not Sub-Teams)
 
-Each issue team lead coordinates — does NOT implement:
-- Dispatch Rex for implementation (TDD, CSS Modules, conventional commits)
-- Dispatch Ada for architecture review
-- Dispatch Sage for security review (skip for pure styling issues)
-- Dispatch Turing for test suite and build verification
-- Iterate: if reviews find issues, re-dispatch Rex to fix, then re-verify
-- Create PR with `Closes #{issue-number}` after all agents approve
+Across two full swarm executions, every team lead chose to implement solo rather than dispatch sub-teams — even when explicitly instructed otherwise. Behavioral instructions and tool restrictions both failed to enforce delegation. The agents consistently assess small/medium fixes as tractable solo work and skip sub-team overhead.
+
+**The accepted pattern is:** fast solo implementation in Phase 1, then independent post-hoc review in Phase 2. This produces the same quality outcome (bugs found, code reviewed, tests verified) with less coordination overhead. The review phase uses the project's defined team agents (Ada, Rex, Sage, Turing, Eliza) dispatched by the orchestrator, not by the issue team leads.
+
+### Implementation Agent Responsibilities (per issue)
+
+Each issue agent works autonomously in its worktree:
+- Read `CLAUDE.md` for project standards
+- Implement the fix/feature following TDD, CSS Modules, conventional commits
+- Run tests (`npm run test:run`) and build (`npm run build`)
+- Commit with conventional commit message
+- Push branch and create PR with `Closes #{issue-number}`

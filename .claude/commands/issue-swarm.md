@@ -60,13 +60,13 @@ name: "lead-issue-{issue-number}"
 isolation: "worktree"
 ```
 
-### Issue Team Lead Prompt Template
+### Issue Agent Prompt Template
 
-Each team lead receives this prompt (filled with issue-specific values):
+Each issue agent receives this prompt (filled with issue-specific values):
 
 ```
-You are the team lead for GitHub issue #{number} in the dekk project.
-You are working in an isolated worktree. Your job is to coordinate a full team to resolve this issue.
+You are an implementation agent for GitHub issue #{number} in the dekk project.
+You are working in an isolated worktree. Implement the fix/feature, run tests, and create a PR.
 
 ## Issue
 **Title:** {title}
@@ -80,48 +80,17 @@ Run: `git checkout -b {branch-name}`
 
 ## Your Workflow
 
-You are a team lead — coordinate, don't implement. Follow these steps:
-
 ### Step 1: Understand the Issue
-Read `CLAUDE.md` for project standards and `docs/plans/2026-02-20-dekk-design.md` for design specs.
-Analyze the issue to understand scope and which agents are needed.
+Read `CLAUDE.md` for project standards.
+Analyze the issue to understand scope and the right fix.
 
-### Step 2: Create Team and Tasks
-Create a team via `TeamCreate` with `team_name: "issue-{number}"`.
-Create tasks via `TaskCreate` for each work item.
+### Step 2: Implement
+- Follow project standards: TypeScript strict mode, CSS Modules, TDD, small focused components
+- Write tests alongside the implementation
+- Run `npm run test:run` and `npm run build` to verify
 
-### Step 3: Dispatch Agents in Parallel
-Spawn the following agents into your team via the `Task` tool (with `team_name: "issue-{number}"`):
-
-- **Rex** (`name: "Rex"`, `subagent_type: "general-purpose"`) — Primary implementer.
-  Implements the fix/feature following project standards: TypeScript strict mode, CSS Modules,
-  TDD (write failing tests first), small focused components. Rex writes both the implementation
-  code AND the tests.
-
-- **Ada** (`name: "Ada"`, `subagent_type: "general-purpose"`) — Architecture reviewer.
-  Reviews Rex's implementation for clean code, proper component boundaries, data flow,
-  TypeScript type safety. Reports findings back to you.
-
-- **Turing** (`name: "Turing"`, `subagent_type: "general-purpose"`) — QA verification.
-  Runs the full test suite (`npm run test:run`), runs the build (`npm run build`),
-  and verifies the changes work correctly. Reports pass/fail status.
-
-- **Sage** (`name: "Sage"`, `subagent_type: "general-purpose"`) — Security review.
-  Reviews changes for XSS risks, injection vulnerabilities, unsafe patterns.
-  Only dispatch Sage if the issue involves user input, markdown rendering, or external data.
-  Skip for pure styling/layout issues.
-
-### Step 4: Coordinate the Work
-1. First dispatch Rex to implement the fix/feature (assign the implementation task).
-2. Once Rex completes, dispatch Ada and Sage in parallel to review Rex's work.
-3. If Ada or Sage find issues, dispatch Rex again to fix them.
-4. Once reviews pass, dispatch Turing to run tests and verify the build.
-5. If Turing reports failures, dispatch Rex to fix, then re-verify.
-
-### Step 5: Finalize
-Once all agents approve and tests pass:
-1. Ensure all changes are committed with conventional commit messages
-   (e.g., `fix: correct button contrast ratio` or `feat: add export to PDF`)
+### Step 3: Finalize
+1. Commit with a conventional commit message (e.g., `fix: correct button contrast ratio`)
 2. Push the branch: `git push -u origin {branch-name}`
 3. Create PR:
    ```
@@ -130,12 +99,6 @@ Once all agents approve and tests pass:
    {brief description of changes}
 
    Closes #{number}
-
-   ## Review
-   - Implemented by Rex
-   - Architecture reviewed by Ada
-   - Security reviewed by Sage
-   - Tests verified by Turing
 
    ## Test plan
    - [ ] Unit tests pass
@@ -147,33 +110,36 @@ Once all agents approve and tests pass:
    )"
    ```
 
-### Step 6: Cleanup
-Send `shutdown_request` to all team agents after work is complete.
-Then clean up the team with `TeamDelete`.
-
 ## Important Rules
 - The PR body MUST include `Closes #{number}` to auto-close the issue on merge
 - Follow conventional commits for all commit messages
 - Do NOT modify files unrelated to this issue
-- You are a team lead — coordinate, don't implement
-
-**ABSOLUTE RULE: You MUST dispatch Rex for ALL implementation work.** You are NOT allowed to use Edit, Write, or Bash to modify source code yourself. Your only tools for code changes are dispatching agents.
-
-- For small fixes (< 10 lines, pure CSS): Dispatch Rex alone, skip review agents
-- For medium fixes: Dispatch Rex, then Ada for review, then Turing to verify
-- For complex fixes: Dispatch Rex, then Ada + Sage in parallel, then Turing
-- You may read files, run git commands, and create PRs — but NEVER write implementation code
-- If the issue is unclear or too large, break it into sub-tasks and dispatch Rex for each one. Note any remaining scope in the PR description
+- Read `CLAUDE.md` before starting — it has the coding standards, brand colors, and architecture
 ```
 
 ## Phase 4 — Monitor & Collect
 
-As issue team leads complete and go idle:
+As issue agents complete and go idle:
 
-1. **Review output**: Check that each team lead created its branch, coordinated its agents, pushed, and opened a PR
+1. **Review output**: Check that each agent created its branch, implemented the fix, pushed, and opened a PR
 2. **Verify PR linking**: Confirm each PR body contains `Closes #{issue-number}`
-3. **Handle failures**: If a team lead failed or got stuck, note the failure reason for the summary report
-4. **Cleanup**: The team leads handle their own agent shutdown and team cleanup. Verify this happened.
+3. **Handle failures**: If an agent failed or got stuck, note the failure reason for the summary report
+
+## Phase 4.5 — Post-Hoc Review
+
+After all PRs are created, dispatch the full team (Ada, Rex, Sage, Turing, Eliza) to review:
+
+1. **Create team** via `TeamCreate` with `team_name: "dekk"`
+2. **Dispatch all 5 agents** in parallel, each reviewing ALL PRs from their specialty:
+   - Ada: architecture, component boundaries, cross-PR interactions, TypeScript type safety
+   - Rex: React patterns, CSS consistency, visual coherence, accessibility
+   - Sage: XSS risks, injection vectors, dependency safety, OWASP top 10
+   - Turing: test coverage, build correctness, CI status, edge cases
+   - Eliza: CLAUDE.md accuracy, commit conventions, PR linking, instrumentation health
+3. **Each agent posts review comments** directly on the GitHub PRs via `gh pr review`
+4. **Collect findings** and present consolidated report to user
+5. **If critical/high findings**: dispatch fix agents against affected PRs before merging
+6. **Shutdown agents** and clean up team
 
 ## Phase 5 — Report & Log
 
