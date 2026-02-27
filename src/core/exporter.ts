@@ -53,12 +53,14 @@ declare global {
   }
 }
 
+export type SaveFileResult = 'saved' | 'cancelled' | 'not-available'
+
 export async function saveMarkdownToFile(
   markdown: string,
   title?: string,
   deckId?: string
-): Promise<boolean> {
-  if (!window.showSaveFilePicker) return false
+): Promise<SaveFileResult> {
+  if (!window.showSaveFilePicker) return 'not-available'
 
   try {
     const handle = await window.showSaveFilePicker({
@@ -68,10 +70,11 @@ export async function saveMarkdownToFile(
     const writable = await handle.createWritable()
     await writable.write(markdown)
     await writable.close()
-    return true
-  } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') return false // user cancelled
-    return false
+    return 'saved'
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'
+    if (err instanceof Error && err.name === 'AbortError') return 'cancelled'
+    return 'not-available'
   }
 }
 
@@ -83,9 +86,11 @@ export async function exportMarkdown(
   if (!markdown.trim() || saving) return false
   saving = true
   try {
-    const saved = await saveMarkdownToFile(markdown, title, deckId)
-    if (!saved) return downloadMarkdown(markdown, title, deckId)
-    return true
+    const result = await saveMarkdownToFile(markdown, title, deckId)
+    if (result === 'saved') return true
+    if (result === 'cancelled') return false
+    // 'not-available' — fall back to blob download
+    return downloadMarkdown(markdown, title, deckId)
   } finally {
     saving = false
   }

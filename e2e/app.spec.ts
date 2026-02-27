@@ -58,6 +58,10 @@ test.describe('Dekk E2E', () => {
   })
 
   test('Ctrl+S downloads presentation as .md', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Force blob download fallback in E2E tests
+      delete (window as Record<string, unknown>).showSaveFilePicker
+    })
     await page.goto('./#deck/default/0')
     // Wait for presentation to load
     await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
@@ -69,6 +73,10 @@ test.describe('Dekk E2E', () => {
   })
 
   test('Ctrl+S works from editor view', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Force blob download fallback in E2E tests
+      delete (window as Record<string, unknown>).showSaveFilePicker
+    })
     await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
     const [download] = await Promise.all([
@@ -129,6 +137,10 @@ test.describe('Dekk E2E', () => {
   })
 
   test('Ctrl+S works from overview view', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Force blob download fallback in E2E tests
+      delete (window as Record<string, unknown>).showSaveFilePicker
+    })
     await page.goto('./#deck/default/overview')
     // Wait for overview to render slide thumbnails
     await page.waitForTimeout(300)
@@ -141,6 +153,10 @@ test.describe('Dekk E2E', () => {
   })
 
   test('export button in editor triggers download', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Force blob download fallback in E2E tests
+      delete (window as Record<string, unknown>).showSaveFilePicker
+    })
     await page.goto('./#deck/default/editor')
     await expect(page.locator('.cm-editor')).toBeVisible()
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { slugify, downloadMarkdown } from './exporter'
+import { slugify, downloadMarkdown, saveMarkdownToFile, exportMarkdown } from './exporter'
 
 describe('slugify', () => {
   it('converts title to lowercase kebab-case', () => {
@@ -86,5 +86,108 @@ describe('downloadMarkdown', () => {
     vi.advanceTimersByTime(60_000)
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
     vi.useRealTimers()
+  })
+})
+
+describe('saveMarkdownToFile', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Remove showSaveFilePicker by default
+    delete (window as unknown as Record<string, unknown>).showSaveFilePicker
+  })
+
+  it('returns "not-available" when showSaveFilePicker is undefined', async () => {
+    const result = await saveMarkdownToFile('# Hello')
+    expect(result).toBe('not-available')
+  })
+
+  it('returns "saved" when user completes the save', async () => {
+    const mockWritable = { write: vi.fn(), close: vi.fn() }
+    const mockHandle = { createWritable: vi.fn().mockResolvedValue(mockWritable) }
+    window.showSaveFilePicker = vi.fn().mockResolvedValue(mockHandle)
+
+    const result = await saveMarkdownToFile('# Hello', 'My Talk')
+    expect(result).toBe('saved')
+    expect(mockWritable.write).toHaveBeenCalledWith('# Hello')
+    expect(mockWritable.close).toHaveBeenCalled()
+  })
+
+  it('returns "cancelled" when user cancels the file picker (AbortError)', async () => {
+    const abortError = new DOMException('The user aborted a request.', 'AbortError')
+    window.showSaveFilePicker = vi.fn().mockRejectedValue(abortError)
+
+    const result = await saveMarkdownToFile('# Hello')
+    expect(result).toBe('cancelled')
+  })
+
+  it('returns "not-available" on other errors', async () => {
+    window.showSaveFilePicker = vi.fn().mockRejectedValue(new Error('SecurityError'))
+
+    const result = await saveMarkdownToFile('# Hello')
+    expect(result).toBe('not-available')
+  })
+})
+
+describe('exportMarkdown', () => {
+  let clickSpy: ReturnType<typeof vi.fn>
+  let appendChildSpy: ReturnType<typeof vi.fn>
+  let removeChildSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    delete (window as unknown as Record<string, unknown>).showSaveFilePicker
+
+    clickSpy = vi.fn()
+    appendChildSpy = vi.fn()
+    removeChildSpy = vi.fn()
+
+    vi.spyOn(document, 'createElement').mockReturnValue({
+      click: clickSpy,
+      href: '',
+      download: '',
+      style: {},
+    } as unknown as HTMLAnchorElement)
+
+    vi.spyOn(document.body, 'appendChild').mockImplementation(appendChildSpy as (node: Node) => Node)
+    vi.spyOn(document.body, 'removeChild').mockImplementation(removeChildSpy as (child: Node) => Node)
+  })
+
+  it('returns false for empty markdown', async () => {
+    expect(await exportMarkdown('')).toBe(false)
+    expect(await exportMarkdown('   ')).toBe(false)
+  })
+
+  it('falls back to downloadMarkdown when showSaveFilePicker is not available', async () => {
+    const result = await exportMarkdown('# Hello')
+    expect(result).toBe(true)
+    expect(clickSpy).toHaveBeenCalled() // blob download triggered
+  })
+
+  it('does NOT fall back to download when user cancels the file picker', async () => {
+    const abortError = new DOMException('The user aborted a request.', 'AbortError')
+    window.showSaveFilePicker = vi.fn().mockRejectedValue(abortError)
+
+    const result = await exportMarkdown('# Hello')
+    expect(result).toBe(false)
+    expect(clickSpy).not.toHaveBeenCalled() // NO blob download
+  })
+
+  it('uses showSaveFilePicker when available and returns true on success', async () => {
+    const mockWritable = { write: vi.fn(), close: vi.fn() }
+    const mockHandle = { createWritable: vi.fn().mockResolvedValue(mockWritable) }
+    window.showSaveFilePicker = vi.fn().mockResolvedValue(mockHandle)
+
+    const result = await exportMarkdown('# Hello')
+    expect(result).toBe(true)
+    expect(clickSpy).not.toHaveBeenCalled() // no blob download
+    expect(mockWritable.write).toHaveBeenCalledWith('# Hello')
+  })
+
+  it('falls back to download on non-abort errors from file picker', async () => {
+    window.showSaveFilePicker = vi.fn().mockRejectedValue(new Error('SecurityError'))
+
+    const result = await exportMarkdown('# Hello')
+    expect(result).toBe(true)
+    expect(clickSpy).toHaveBeenCalled() // blob download triggered as fallback
   })
 })
