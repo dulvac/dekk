@@ -164,27 +164,47 @@ Stale agents waste resources and clutter the team roster. Follow these rules to 
 
 ## Issue Swarm Protocol
 
-When `/issue-swarm` is invoked, the team lead orchestrates parallel issue resolution:
+When `/issue-swarm` is invoked, the main orchestrator dispatches a **full agent team per issue**, with multiple issue teams running in parallel. This is a hierarchical dispatch: the orchestrator spawns team leads, each team lead coordinates its own agents.
 
-1. **Fetch** open issues via `gh issue list --json number,title,labels,body`
-2. **Cap at 5** concurrent agents (hard limit from Max Concurrent Agents rule)
-3. **Map labels to branches**: `bug` -> `fix/`, `documentation` -> `docs/`, default -> `feature/`
-4. **Select agent per issue**:
-   - Bug + frontend/CSS/UI keywords -> Rex
-   - Bug + test/CI/build keywords -> Turing
-   - Bug + security keywords -> Sage
-   - Documentation -> Eliza
-   - Enhancement/default -> Rex
-5. **Name agents**: `{Agent}-issue-{number}` (e.g., `Rex-issue-42`)
-6. **Each agent** works in a worktree (`isolation: "worktree"`), creates branch, implements, tests, pushes, opens PR with `Closes #N`
-7. **Team lead monitors**: Review agent output, send `shutdown_request` on completion
-8. **Log everything** per Communication Logging Protocol
+**Note:** The 5-agent concurrency limit does NOT apply during swarms. Each issue team operates independently in its own worktree and manages its own agent lifecycle.
 
-### Swarm Agent Task Template
+### Swarm Architecture
 
-Each dispatched agent receives:
-- GitHub issue number, title, and full body
-- Target branch name (pre-determined by team lead based on label mapping)
-- Instruction to follow project coding standards (TDD, CSS Modules, conventional commits)
-- Instruction to create PR with `Closes #{issue-number}` in the body on completion
-- References to relevant design docs and implementation plans
+```
+Orchestrator (you)
+├── lead-issue-42 (worktree) ── creates team "issue-42"
+│   ├── Rex (implement)
+│   ├── Ada (architecture review)
+│   ├── Turing (test & verify)
+│   └── Sage (security review, if needed)
+├── lead-issue-15 (worktree) ── creates team "issue-15"
+│   ├── Rex (implement)
+│   ├── Ada (architecture review)
+│   ├── Turing (test & verify)
+│   └── Sage (security review, if needed)
+└── ... up to 5 issue teams in parallel
+```
+
+### Swarm Steps
+
+1. **Fetch** open issues via `gh issue list --json number,title,labels,body` (cap at 5 issues)
+2. **Map labels to branches**: `bug` -> `fix/`, `documentation` -> `docs/`, default -> `feature/`
+3. **Spawn one team lead per issue** via `Task` with `isolation: "worktree"` — all in a single parallel dispatch
+4. **Each team lead**:
+   - Creates a team (`TeamCreate` with `team_name: "issue-{number}"`)
+   - Dispatches Rex to implement, then Ada + Sage to review, then Turing to verify
+   - Iterates on review findings until all agents approve
+   - Commits, pushes, and creates PR with `Closes #{number}`
+   - Shuts down its agents and deletes its team
+5. **Orchestrator monitors** team lead output, collects PR URLs, reports summary
+6. **Log everything** per Communication Logging Protocol
+
+### Team Lead Responsibilities (per issue)
+
+Each issue team lead coordinates — does NOT implement:
+- Dispatch Rex for implementation (TDD, CSS Modules, conventional commits)
+- Dispatch Ada for architecture review
+- Dispatch Sage for security review (skip for pure styling issues)
+- Dispatch Turing for test suite and build verification
+- Iterate: if reviews find issues, re-dispatch Rex to fix, then re-verify
+- Create PR with `Closes #{issue-number}` after all agents approve

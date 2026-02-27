@@ -1,9 +1,9 @@
 ---
-description: Retrieve open issues and dispatch parallel agents to work on each in isolated worktrees (e.g., /issue-swarm or /issue-swarm bug)
+description: Retrieve open issues and dispatch a full agent team per issue, all teams working in parallel (e.g., /issue-swarm or /issue-swarm bug)
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 ---
 
-Orchestrate parallel agent dispatch for open GitHub issues. Each issue gets a dedicated agent working in an isolated worktree.
+Orchestrate parallel full-team dispatch for open GitHub issues. Each issue gets its own dedicated team of agents (Rex, Ada, Turing, Sage) working in an isolated worktree. Multiple issue teams run simultaneously.
 
 **CRITICAL: Follow the Issue Swarm Protocol in `.claude/TEAM_WORKFLOW.md`.**
 
@@ -39,43 +39,34 @@ Format: `{prefix}{issue-number}-{slug}`
 - Slug: issue title lowercased, spaces replaced with hyphens, non-alphanumeric characters removed, truncated to 50 characters
 - Example: Issue #42 "Fix button contrast ratio" with `bug` label -> `fix/42-fix-button-contrast-ratio`
 
-### Agent Selection
-Based on issue labels and title/body keyword analysis:
-- `bug` + title/body mentions CSS, UI, component, visual, styling, layout, color -> **Rex**
-- `bug` + title/body mentions test, CI, build, deploy, pipeline, workflow -> **Turing**
-- `bug` + title/body mentions security, XSS, vulnerability, sanitize, injection -> **Sage**
-- `documentation` label -> **Eliza**
-- `enhancement` or no matching label -> **Rex** (default — most features in this SPA project are frontend)
-- Title/body mentions architecture, refactor, performance, structure -> **Ada**
-
 ### Display Plan
 Present the assignment table to the user:
 ```
-| # | Issue | Branch | Agent |
-|---|-------|--------|-------|
-| 42 | Fix button contrast | fix/42-fix-button-contrast | Rex |
-| 15 | Add export to PDF | feature/15-add-export-to-pdf | Rex |
+| # | Issue | Branch | Team |
+|---|-------|--------|------|
+| 42 | Fix button contrast | fix/42-fix-button-contrast | Rex (impl) + Ada (review) + Turing (test) + Sage (security) |
+| 15 | Add export to PDF | feature/15-add-export-to-pdf | Rex (impl) + Ada (review) + Turing (test) |
 ```
 
 Proceed without waiting for approval (per Autonomous Fix Policy in TEAM_WORKFLOW.md).
 
-## Phase 3 — Dispatch Agents
+## Phase 3 — Dispatch Issue Team Leads
 
-**Spawn ALL agents in a SINGLE message** (parallel dispatch). For each assignment, use the `Task` tool with:
+**Spawn ALL issue team leads in a SINGLE message** (parallel dispatch). For each issue, use the `Task` tool to spawn a **team lead agent** that will coordinate its own sub-team:
 
 ```
 subagent_type: "general-purpose"
-team_name: "marko-pollo"
-name: "{Agent}-issue-{issue-number}"
+name: "lead-issue-{issue-number}"
 isolation: "worktree"
 ```
 
-### Agent Prompt Template
+### Issue Team Lead Prompt Template
 
-Each agent receives this prompt (filled with issue-specific values):
+Each team lead receives this prompt (filled with issue-specific values):
 
 ```
-You are working on GitHub issue #{number} for the marko-pollo project.
+You are the team lead for GitHub issue #{number} in the marko-pollo project.
+You are working in an isolated worktree. Your job is to coordinate a full team to resolve this issue.
 
 ## Issue
 **Title:** {title}
@@ -83,26 +74,68 @@ You are working on GitHub issue #{number} for the marko-pollo project.
 **Body:**
 {body}
 
-## Your Task
+## Branch
+Create and work on branch: `{branch-name}`
+Run: `git checkout -b {branch-name}`
 
-1. **Create branch**: `git checkout -b {branch-name}`
-2. **Read the project context**: Read `CLAUDE.md` for coding standards and `docs/plans/2026-02-20-marko-pollo-design.md` for design specs
-3. **Implement the fix/feature** following project standards:
-   - TypeScript strict mode, no `any`
-   - CSS Modules + CSS custom properties for styling
-   - TDD: write failing tests first, then implement
-   - Small, focused components (one per file)
-4. **Run tests**: `npm run test:run` — all must pass
-5. **Run build**: `npm run build` — must succeed
-6. **Commit** with conventional commit message (e.g., `fix: correct button contrast ratio` or `feat: add export to PDF`)
-7. **Push**: `git push -u origin {branch-name}`
-8. **Create PR**:
+## Your Workflow
+
+You are a team lead — coordinate, don't implement. Follow these steps:
+
+### Step 1: Understand the Issue
+Read `CLAUDE.md` for project standards and `docs/plans/2026-02-20-marko-pollo-design.md` for design specs.
+Analyze the issue to understand scope and which agents are needed.
+
+### Step 2: Create Team and Tasks
+Create a team via `TeamCreate` with `team_name: "issue-{number}"`.
+Create tasks via `TaskCreate` for each work item.
+
+### Step 3: Dispatch Agents in Parallel
+Spawn the following agents into your team via the `Task` tool (with `team_name: "issue-{number}"`):
+
+- **Rex** (`name: "Rex"`, `subagent_type: "general-purpose"`) — Primary implementer.
+  Implements the fix/feature following project standards: TypeScript strict mode, CSS Modules,
+  TDD (write failing tests first), small focused components. Rex writes both the implementation
+  code AND the tests.
+
+- **Ada** (`name: "Ada"`, `subagent_type: "general-purpose"`) — Architecture reviewer.
+  Reviews Rex's implementation for clean code, proper component boundaries, data flow,
+  TypeScript type safety. Reports findings back to you.
+
+- **Turing** (`name: "Turing"`, `subagent_type: "general-purpose"`) — QA verification.
+  Runs the full test suite (`npm run test:run`), runs the build (`npm run build`),
+  and verifies the changes work correctly. Reports pass/fail status.
+
+- **Sage** (`name: "Sage"`, `subagent_type: "general-purpose"`) — Security review.
+  Reviews changes for XSS risks, injection vulnerabilities, unsafe patterns.
+  Only dispatch Sage if the issue involves user input, markdown rendering, or external data.
+  Skip for pure styling/layout issues.
+
+### Step 4: Coordinate the Work
+1. First dispatch Rex to implement the fix/feature (assign the implementation task).
+2. Once Rex completes, dispatch Ada and Sage in parallel to review Rex's work.
+3. If Ada or Sage find issues, dispatch Rex again to fix them.
+4. Once reviews pass, dispatch Turing to run tests and verify the build.
+5. If Turing reports failures, dispatch Rex to fix, then re-verify.
+
+### Step 5: Finalize
+Once all agents approve and tests pass:
+1. Ensure all changes are committed with conventional commit messages
+   (e.g., `fix: correct button contrast ratio` or `feat: add export to PDF`)
+2. Push the branch: `git push -u origin {branch-name}`
+3. Create PR:
    ```
-   gh pr create --repo dulvac/marko-pollo --title "{conventional-commit-title}" --body "$(cat <<'EOF'
+   gh pr create --repo dulvac/marko-pollo --title "{conventional-commit-title}" --body "$(cat <<'PREOF'
    ## Summary
    {brief description of changes}
 
    Closes #{number}
+
+   ## Review
+   - Implemented by Rex
+   - Architecture reviewed by Ada
+   - Security reviewed by Sage
+   - Tests verified by Turing
 
    ## Test plan
    - [ ] Unit tests pass
@@ -110,35 +143,40 @@ You are working on GitHub issue #{number} for the marko-pollo project.
    - [ ] Manual verification of the fix/feature
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
-   EOF
+   PREOF
    )"
    ```
 
-## Important
+### Step 6: Cleanup
+Send `shutdown_request` to all team agents after work is complete.
+Then clean up the team with `TeamDelete`.
+
+## Important Rules
 - The PR body MUST include `Closes #{number}` to auto-close the issue on merge
-- Follow conventional commits for the commit message
+- Follow conventional commits for all commit messages
 - Do NOT modify files unrelated to this issue
+- You are a team lead — coordinate and review, do NOT write implementation code yourself
 - If the issue is unclear or too large, implement what you can and note limitations in the PR description
 ```
 
 ## Phase 4 — Monitor & Collect
 
-As agents complete and go idle:
+As issue team leads complete and go idle:
 
-1. **Review output**: Check that each agent created its branch, committed, pushed, and opened a PR
+1. **Review output**: Check that each team lead created its branch, coordinated its agents, pushed, and opened a PR
 2. **Verify PR linking**: Confirm each PR body contains `Closes #{issue-number}`
-3. **Handle failures**: If an agent failed, note the failure reason for the summary report
-4. **Shutdown**: Send `shutdown_request` to each completed agent
+3. **Handle failures**: If a team lead failed or got stuck, note the failure reason for the summary report
+4. **Cleanup**: The team leads handle their own agent shutdown and team cleanup. Verify this happened.
 
 ## Phase 5 — Report & Log
 
 1. **Present summary** to the user:
    ```
    ## Issue Swarm Results
-   | # | Issue | PR | Status |
-   |---|-------|----|--------|
-   | 42 | Fix button contrast | #5 | ✓ PR created |
-   | 15 | Add export to PDF | — | ✗ Build failed |
+   | # | Issue | PR | Agents | Status |
+   |---|-------|----|--------|--------|
+   | 42 | Fix button contrast | #5 | Rex, Ada, Turing | ✓ PR created |
+   | 15 | Add export to PDF | — | Rex, Ada, Sage, Turing | ✗ Build failed |
    ```
 
 2. **Communication Logging**: Follow the Communication Logging Protocol from `TEAM_WORKFLOW.md`:
