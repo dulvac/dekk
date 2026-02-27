@@ -2,11 +2,11 @@
 
 ## Problem
 
-Marko Pollo has no public URL. Sharing a presentation deck requires the recipient to clone the repo, install dependencies, and run `npm run dev`. There is no automated path from a merged commit to a live, accessible deployment.
+Dekk has no public URL. Sharing a presentation deck requires the recipient to clone the repo, install dependencies, and run `npm run dev`. There is no automated path from a merged commit to a live, accessible deployment.
 
 ## Goal
 
-Automatically publish Marko Pollo to GitHub Pages on every push to `main`, with full CI checks (lint, test, build) as a required gate before any deployment proceeds.
+Automatically publish Dekk to GitHub Pages on every push to `main`, with full CI checks (lint, test, build) as a required gate before any deployment proceeds.
 
 ## Requirements
 
@@ -16,7 +16,7 @@ Automatically publish Marko Pollo to GitHub Pages on every push to `main`, with 
 
 2. **CI gate** — The deploy job must `needs` the existing CI job. A failing lint, test, or build blocks deployment entirely.
 
-3. **Vite `base` configuration** — The app is served at `https://{owner}.github.io/marko-pollo/`, not at the root. Vite must be told the sub-path so asset URLs in the built HTML are correct. Local dev must continue to work at `/`.
+3. **Vite `base` configuration** — The app is served at `https://{owner}.github.io/dekk/`, not at the root. Vite must be told the sub-path so asset URLs in the built HTML are correct. Local dev must continue to work at `/`.
 
 4. **Upload and deploy via official GitHub actions** — Use `actions/upload-pages-artifact@v3` to stage the `dist/` directory and `actions/deploy-pages@v4` to deploy. Do not use third-party publishing actions.
 
@@ -52,18 +52,18 @@ Alternative considered: a separate `deploy.yml` triggered by `workflow_run: [CI]
 
 ### Vite Base Configuration
 
-The `vite.config.ts` currently has no `base` set, which defaults to `/`. On GitHub Pages, the app is served under `/marko-pollo/`, so asset references in the built `index.html` must use that prefix.
+The `vite.config.ts` currently has no `base` set, which defaults to `/`. On GitHub Pages, the app is served under `/dekk/`, so asset references in the built `index.html` must use that prefix.
 
 **Strategy:** Pass `--base` via the CLI in the deploy build step. No change to `vite.config.ts` is required for the common case; local `npm run dev` and `npm run build` remain unaffected.
 
 Deploy build command:
 ```
-tsc -b && vite build --base /marko-pollo/
+tsc -b && vite build --base /dekk/
 ```
 
 Note: if the repository is ever renamed or moved to a different Pages path, only the workflow file changes — not the source code.
 
-Vite rewrites `index.html` asset references automatically when `--base` is set. The existing `href="/vite.svg"` in `index.html` will be rewritten to `/marko-pollo/vite.svg` in the build output. Hash-based routing (`/#/`, `/#/edit`, `/#/overview`) is unaffected by the base path because hash fragments are purely client-side.
+Vite rewrites `index.html` asset references automatically when `--base` is set. The existing `href="/vite.svg"` in `index.html` will be rewritten to `/dekk/vite.svg` in the build output. Hash-based routing (`/#/`, `/#/edit`, `/#/overview`) is unaffected by the base path because hash fragments are purely client-side.
 
 ### New Files
 
@@ -145,8 +145,8 @@ jobs:
         run: npm ci
 
       - name: Build for GitHub Pages
-        run: npm run build -- --base /marko-pollo/
-        # Equivalent to: tsc -b && vite build --base /marko-pollo/
+        run: npm run build -- --base /dekk/
+        # Equivalent to: tsc -b && vite build --base /dekk/
         # Hash-based routing is unaffected by base path changes.
         # Asset filenames include content hashes (Vite default) — cache busting is automatic.
 
@@ -164,9 +164,9 @@ jobs:
 
 `npm run build` expands to `tsc -b && vite build`. To pass `--base` to `vite build` only, use:
 ```
-npm run build -- --base /marko-pollo/
+npm run build -- --base /dekk/
 ```
-The `--` separator passes trailing arguments to the underlying script. `tsc -b` runs first (no `--base` argument), then `vite build --base /marko-pollo/`.
+The `--` separator passes trailing arguments to the underlying script. `tsc -b` runs first (no `--base` argument), then `vite build --base /dekk/`.
 
 ### GitHub Pages Repository Settings
 
@@ -212,7 +212,7 @@ To configure a custom domain:
 
 Vite copies files from `public/` into `dist/` unchanged. GitHub Pages reads `CNAME` from the deployed artifact root. No workflow changes needed.
 
-When a custom domain is active, the `--base /marko-pollo/` flag must be changed to `--base /` (or omitted), since the site is at the domain root. This is the only change required.
+When a custom domain is active, the `--base /dekk/` flag must be changed to `--base /` (or omitted), since the site is at the domain root. This is the only change required.
 
 ### Preview Deployments (Deferred)
 
@@ -235,6 +235,6 @@ If preview deployments become a priority, the cleanest path is migrating the dep
 
 - **CI gate**: Push a breaking change to a PR; verify the deploy job is skipped (does not appear or is skipped in the workflow run)
 - **Deploy on merge**: Merge a trivial change to `main`; verify the deploy job runs and the Pages URL serves the app
-- **Base path**: Navigate to `https://{owner}.github.io/marko-pollo/` — the app loads, fonts render, mermaid diagrams render (requires the correct base to load vendor chunks)
-- **Hash routing**: Navigate to `https://{owner}.github.io/marko-pollo/#/edit` directly — the editor view loads (confirms hash routing is unaffected by base path)
+- **Base path**: Navigate to `https://{owner}.github.io/dekk/` — the app loads, fonts render, mermaid diagrams render (requires the correct base to load vendor chunks)
+- **Hash routing**: Navigate to `https://{owner}.github.io/dekk/#/edit` directly — the editor view loads (confirms hash routing is unaffected by base path)
 - **Asset cache busting**: Inspect built `index.html` — all `<script>` and `<link>` `src`/`href` attributes include content hashes

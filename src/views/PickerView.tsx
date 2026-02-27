@@ -10,7 +10,7 @@ export function PickerView({ entries, onSelectDeck }: PickerViewProps) {
   return (
     <div className={styles.pickerView}>
       <header className={styles.header}>
-        <h1 className={styles.logo}>marko pollo</h1>
+        <h1 className={styles.logo}>dekk</h1>
       </header>
       <div className={styles.grid}>
         {entries.map((entry) => (

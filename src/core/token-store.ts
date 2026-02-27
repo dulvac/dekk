@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'marko-pollo-github-token'
+const STORAGE_KEY = 'dekk-github-token'
 
 export function getToken(): string | null {
   try {

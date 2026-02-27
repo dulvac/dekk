@@ -3,7 +3,7 @@ description: Close a GitHub issue by number with optional comment (e.g., /issue-
 allowed-tools: Bash
 ---
 
-Close a GitHub issue on the `dulvac/marko-pollo` repository.
+Close a GitHub issue on the `dulvac/dekk` repository.
 
 ## Argument Parsing
 
@@ -17,11 +17,11 @@ If no issue number is provided, ask the user for one.
 
 1. **Verify authentication**: Run `gh auth status` to confirm the active GitHub account.
 
-2. **Confirm issue exists**: Run `gh issue view <number> --repo dulvac/marko-pollo --json state,title` to verify the issue exists and is currently open. If already closed, report that and stop.
+2. **Confirm issue exists**: Run `gh issue view <number> --repo dulvac/dekk --json state,title` to verify the issue exists and is currently open. If already closed, report that and stop.
 
-3. **Add comment** (if provided): Run `gh issue comment <number> --repo dulvac/marko-pollo --body "<comment>"` before closing.
+3. **Add comment** (if provided): Run `gh issue comment <number> --repo dulvac/dekk --body "<comment>"` before closing.
 
-4. **Close the issue**: Run `gh issue close <number> --repo dulvac/marko-pollo`.
+4. **Close the issue**: Run `gh issue close <number> --repo dulvac/dekk`.
 
 5. **Report**: Output confirmation with the issue title and URL.
 

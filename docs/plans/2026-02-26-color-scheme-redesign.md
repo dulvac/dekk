@@ -71,7 +71,7 @@ Replace `github-dark` with `vitesse-dark` — a warm, earthy syntax highlighting
 
 ### Documentation
 - `CLAUDE.md` — brand colors table
-- `docs/plans/2026-02-20-marko-pollo-design.md` — visual identity section
+- `docs/plans/2026-02-20-dekk-design.md` — visual identity section
 
 ### Tests
 - Mock objects and test assertions that reference specific color values

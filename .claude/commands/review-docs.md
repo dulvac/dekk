@@ -4,8 +4,8 @@ description: Review the design document and implementation plan for completeness
 
 Review the following documents:
 
-1. `docs/plans/2026-02-20-marko-pollo-design.md` - Design specification
-2. `docs/plans/2026-02-20-marko-pollo-implementation.md` - Implementation plan
+1. `docs/plans/2026-02-20-dekk-design.md` - Design specification
+2. `docs/plans/2026-02-20-dekk-implementation.md` - Implementation plan
 
 Analyze from these perspectives:
 

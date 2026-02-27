@@ -1,12 +1,12 @@
 ---
-description: Spin up the full Marko Pollo team to review the current state of the project
+description: Spin up the full Dekk team to review the current state of the project
 ---
 
-Assemble the Marko Pollo development team for a comprehensive review of the project's current state.
+Assemble the Dekk development team for a comprehensive review of the project's current state.
 
-**CRITICAL: Use the team infrastructure.** All agents MUST be spawned via the `Task` tool with `team_name: "marko-pollo"` and the agent's `name` parameter. Do NOT spawn standalone agents outside the team — this bypasses team visibility and violates the project workflow.
+**CRITICAL: Use the team infrastructure.** All agents MUST be spawned via the `Task` tool with `team_name: "dekk"` and the agent's `name` parameter. Do NOT spawn standalone agents outside the team — this bypasses team visibility and violates the project workflow.
 
-Spawn the following agents into the `marko-pollo` team and have each review from their specialty:
+Spawn the following agents into the `dekk` team and have each review from their specialty:
 
 1. **Ada** (Architect) - `name: "Ada"` - Review architecture, component boundaries, data flow, crash risks
 2. **Rex** (Frontend) - `name: "Rex"` - Review React patterns, component quality, CSS, visual fidelity

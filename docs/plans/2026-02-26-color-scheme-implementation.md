@@ -276,7 +276,7 @@ git commit -m "feat(colors): switch Shiki theme from github-dark to vitesse-dark
 
 **Files:**
 - Modify: `CLAUDE.md:62-71` (Brand Colors table)
-- Modify: `docs/plans/2026-02-20-marko-pollo-design.md` (Visual Identity section)
+- Modify: `docs/plans/2026-02-20-dekk-design.md` (Visual Identity section)
 
 **Step 1: Update CLAUDE.md brand colors table**
 
@@ -295,12 +295,12 @@ Replace lines 62-71 with:
 
 **Step 2: Update design doc visual identity section**
 
-Find the color table in `docs/plans/2026-02-20-marko-pollo-design.md` and update it to match the new palette. Also update any text that says "purple" or "teal" to say "gold" and "green".
+Find the color table in `docs/plans/2026-02-20-dekk-design.md` and update it to match the new palette. Also update any text that says "purple" or "teal" to say "gold" and "green".
 
 **Step 3: Commit**
 
 ```
-git add CLAUDE.md docs/plans/2026-02-20-marko-pollo-design.md
+git add CLAUDE.md docs/plans/2026-02-20-dekk-design.md
 git commit -m "docs: update brand colors documentation to earth & gold palette"
 ```
 

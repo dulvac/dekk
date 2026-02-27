@@ -10,12 +10,12 @@ export default defineConfig({
   workers: isCI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: isCI ? 'http://localhost:5173/marko-pollo/' : 'http://localhost:5173',
+    baseURL: isCI ? 'http://localhost:5173/dekk/' : 'http://localhost:5173',
     trace: 'on-first-retry',
   },
   webServer: {
-    command: isCI ? 'npx vite preview --port 5173 --base /marko-pollo/' : 'npm run dev',
-    url: isCI ? 'http://localhost:5173/marko-pollo/' : 'http://localhost:5173',
+    command: isCI ? 'npx vite preview --port 5173 --base /dekk/' : 'npm run dev',
+    url: isCI ? 'http://localhost:5173/dekk/' : 'http://localhost:5173',
     reuseExistingServer: !isCI,
   },
   projects: [

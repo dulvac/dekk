@@ -13,19 +13,19 @@ describe('token-store', () => {
 
   it('stores in sessionStorage by default', () => {
     setToken('ghp_test123', 'session')
-    expect(sessionStorage.getItem('marko-pollo-github-token')).toBe('ghp_test123')
-    expect(localStorage.getItem('marko-pollo-github-token')).toBeNull()
+    expect(sessionStorage.getItem('dekk-github-token')).toBe('ghp_test123')
+    expect(localStorage.getItem('dekk-github-token')).toBeNull()
   })
 
   it('stores in localStorage when opted in', () => {
     setToken('ghp_test123', 'local')
-    expect(localStorage.getItem('marko-pollo-github-token')).toBe('ghp_test123')
+    expect(localStorage.getItem('dekk-github-token')).toBe('ghp_test123')
   })
 
   it('getToken checks sessionStorage first then localStorage', () => {
-    localStorage.setItem('marko-pollo-github-token', 'ghp_local')
+    localStorage.setItem('dekk-github-token', 'ghp_local')
     expect(getToken()).toBe('ghp_local')
-    sessionStorage.setItem('marko-pollo-github-token', 'ghp_session')
+    sessionStorage.setItem('dekk-github-token', 'ghp_session')
     expect(getToken()).toBe('ghp_session')
   })
 

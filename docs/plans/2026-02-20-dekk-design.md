@@ -1,4 +1,4 @@
-# Marko Pollo - Design Document
+# Dekk - Design Document
 
 **Date:** 2026-02-20
 **Updated:** 2026-02-21 (post-cohesive implementation)
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Marko Pollo is a static single-page web application for presenting beautiful-looking slides authored in markdown. It targets developer talks at tech conferences, meetups, and internal engineering presentations. The app provides a highly branded, dark, cinematic visual identity with custom rendering of every markdown element.
+Dekk is a static single-page web application for presenting beautiful-looking slides authored in markdown. It targets developer talks at tech conferences, meetups, and internal engineering presentations. The app provides a highly branded, dark, cinematic visual identity with custom rendering of every markdown element.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ Marko Pollo is a static single-page web application for presenting beautiful-loo
 - Markdown file export via Ctrl+S / Cmd+S (File System Access API with download fallback)
 - Export button in editor toolbar
 - Environment-aware persistence:
-  - **Dev server:** Direct file write via Vite plugin (`/__marko-pollo/write-file`)
+  - **Dev server:** Direct file write via Vite plugin (`/__dekk/write-file`)
   - **GitHub Pages:** GitHub API flow — creates branch, updates file, opens pull request
   - **Unknown:** Falls back to file download
 - GitHub Personal Access Token authentication (session or local storage)
@@ -144,7 +144,7 @@ useRoute() parses window.location.hash → Route
     |
     └── { view: *, deckId } → loadDeck(deckId)
             |
-            ├── localStorage draft (marko-pollo-deck-{id}) if present
+            ├── localStorage draft (dekk-deck-{id}) if present
             └── deckRegistry entry (build-time bundled markdown)
                     |
                     v
@@ -171,7 +171,7 @@ useRoute() parses window.location.hash → Route
     v
 detectEnvironment() → 'dev' | 'github-pages' | 'unknown'
     |
-    ├── dev → POST /__marko-pollo/write-file (Vite plugin writes to disk)
+    ├── dev → POST /__dekk/write-file (Vite plugin writes to disk)
     ├── github-pages → GitHub API (branch → update file → open PR)
     └── unknown → exportMarkdown() (File System Access API / download fallback)
 ```
@@ -220,7 +220,7 @@ unified()
   .use(remarkSlides)          // custom: split on thematicBreak (---)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeShiki, {
-    theme: 'custom-marko-pollo',
+    theme: 'custom-dekk',
     transformers: [
       transformerNotationDiff(),
       transformerNotationHighlight(),
@@ -366,12 +366,12 @@ Presentations live in `presentations/*/slides.md`. Vite's `import.meta.glob` dis
 ### Per-Deck Loading Priority (highest wins)
 
 1. **Editor / file drop** — user edits in the editor or drops a `.md` file
-2. **localStorage draft** — per-deck key `marko-pollo-deck-{id}` preserves editor changes across refreshes
+2. **localStorage draft** — per-deck key `dekk-deck-{id}` preserves editor changes across refreshes
 3. **Registry entry** — build-time bundled markdown from `presentations/{id}/slides.md`
 
 ### Legacy Migration
 
-On first load, `migrateOldStorage()` moves the old single-deck key (`marko-pollo-slides`) to `marko-pollo-deck-default`.
+On first load, `migrateOldStorage()` moves the old single-deck key (`dekk-slides`) to `dekk-deck-default`.
 
 ## Slide Viewport
 
@@ -380,7 +380,7 @@ Fixed 16:9 aspect ratio (1920x1080 logical pixels). Scaled to fit the browser vi
 ## Project Structure
 
 ```
-marko-pollo/
+dekk/
 ├── index.html
 ├── package.json
 ├── tsconfig.json

@@ -22,7 +22,7 @@ export async function detectEnvironment(): Promise<Environment> {
   // Check if running in Vite dev server
   if (import.meta.env.DEV) {
     try {
-      const response = await fetch('/__marko-pollo/ping')
+      const response = await fetch('/__dekk/ping')
       if (response.ok) {
         cachedEnvironment = 'dev'
         return 'dev'
@@ -73,7 +73,7 @@ export function detectGitHubRepo(url: string): { owner: string; repo: string } |
 
 export async function saveToDevServer(filePath: string, content: string): Promise<boolean> {
   try {
-    const response = await fetch('/__marko-pollo/write-file', {
+    const response = await fetch('/__dekk/write-file', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: filePath, content }),
@@ -102,7 +102,7 @@ export async function saveToGitHub(
 
   // Step 4: Create a new branch from HEAD
   const timestamp = Date.now()
-  const branchName = `marko-pollo-${timestamp}`
+  const branchName = `dekk-${timestamp}`
   await createBranch(owner, repo, branchName, headSha, token)
 
   // Step 5: Update the file on the new branch
@@ -111,7 +111,7 @@ export async function saveToGitHub(
 
   // Step 6: Create a pull request
   const prTitle = commitMessage
-  const prBody = `Automated update from Marko Pollo editor.\n\n**File:** \`${filePath}\``
+  const prBody = `Automated update from Dekk editor.\n\n**File:** \`${filePath}\``
   const { url: prUrl } = await createPullRequest(
     owner,
     repo,

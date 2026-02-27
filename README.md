@@ -1,4 +1,4 @@
-# Marko Pollo
+# Dekk
 
 A markdown-to-slides presentation engine with a dark cinematic visual identity, built for developer talks at tech conferences, meetups, and engineering presentations.
 
@@ -23,7 +23,7 @@ A markdown-to-slides presentation engine with a dark cinematic visual identity, 
 
 ```bash
 git clone <repo-url>
-cd marko-pollo
+cd dekk
 npm install
 npm run dev
 ```

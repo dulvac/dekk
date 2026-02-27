@@ -14,11 +14,11 @@ Orchestrate parallel full-team dispatch for open GitHub issues. Each issue gets 
 2. **Fetch open issues**:
    - If `$ARGUMENTS` is non-empty, filter by label:
      ```
-     gh issue list --repo dulvac/marko-pollo --state open --label "$ARGUMENTS" --json number,title,labels,body,assignees --limit 20
+     gh issue list --repo dulvac/dekk --state open --label "$ARGUMENTS" --json number,title,labels,body,assignees --limit 20
      ```
    - If `$ARGUMENTS` is empty:
      ```
-     gh issue list --repo dulvac/marko-pollo --state open --json number,title,labels,body,assignees --limit 20
+     gh issue list --repo dulvac/dekk --state open --json number,title,labels,body,assignees --limit 20
      ```
 
 3. **If zero issues found**: Report "No open issues to work on" and stop.
@@ -65,7 +65,7 @@ isolation: "worktree"
 Each team lead receives this prompt (filled with issue-specific values):
 
 ```
-You are the team lead for GitHub issue #{number} in the marko-pollo project.
+You are the team lead for GitHub issue #{number} in the dekk project.
 You are working in an isolated worktree. Your job is to coordinate a full team to resolve this issue.
 
 ## Issue
@@ -83,7 +83,7 @@ Run: `git checkout -b {branch-name}`
 You are a team lead — coordinate, don't implement. Follow these steps:
 
 ### Step 1: Understand the Issue
-Read `CLAUDE.md` for project standards and `docs/plans/2026-02-20-marko-pollo-design.md` for design specs.
+Read `CLAUDE.md` for project standards and `docs/plans/2026-02-20-dekk-design.md` for design specs.
 Analyze the issue to understand scope and which agents are needed.
 
 ### Step 2: Create Team and Tasks
@@ -125,7 +125,7 @@ Once all agents approve and tests pass:
 2. Push the branch: `git push -u origin {branch-name}`
 3. Create PR:
    ```
-   gh pr create --repo dulvac/marko-pollo --title "{conventional-commit-title}" --body "$(cat <<'PREOF'
+   gh pr create --repo dulvac/dekk --title "{conventional-commit-title}" --body "$(cat <<'PREOF'
    ## Summary
    {brief description of changes}
 

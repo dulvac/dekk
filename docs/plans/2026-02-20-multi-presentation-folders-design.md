@@ -2,7 +2,7 @@
 
 ## Problem
 
-Marko Pollo currently supports exactly one presentation at a time. The active markdown comes from one of three sources — localStorage, a `?url=` parameter, or the bundled `src/assets/slides.md` default. There is no concept of owning multiple presentations, no way to switch between them, and no organised storage convention. A user preparing talks for several conferences must manually swap files by drag-drop or URL, with no persistent identity for each deck.
+Dekk currently supports exactly one presentation at a time. The active markdown comes from one of three sources — localStorage, a `?url=` parameter, or the bundled `src/assets/slides.md` default. There is no concept of owning multiple presentations, no way to switch between them, and no organised storage convention. A user preparing talks for several conferences must manually swap files by drag-drop or URL, with no persistent identity for each deck.
 
 ## Goal
 
@@ -105,17 +105,17 @@ The `DeckRegistry` is not part of `SlideState` — it is a build-time constant t
 
 #### localStorage: per-deck keying
 
-The existing single key `marko-pollo-slides` is deprecated. Per-deck draft storage uses:
+The existing single key `dekk-slides` is deprecated. Per-deck draft storage uses:
 
 ```
-marko-pollo-deck-{deckId}
+dekk-deck-{deckId}
 ```
 
 When loading a deck, the loader first checks for a localStorage draft under that key, then falls back to the bundled `rawMarkdown` from the registry. On editor save, the draft is written to the deck-specific key.
 
-Local-draft decks created via "Create new" or drag-drop use the same key pattern with user-supplied or auto-generated ids. A separate index of local-draft ids is stored at `marko-pollo-local-decks` (JSON array of strings) so the Picker can enumerate them.
+Local-draft decks created via "Create new" or drag-drop use the same key pattern with user-supplied or auto-generated ids. A separate index of local-draft ids is stored at `dekk-local-decks` (JSON array of strings) so the Picker can enumerate them.
 
-Migration: on first load after the update, if the old `marko-pollo-slides` key exists and no per-deck keys exist, the stored content is migrated to `marko-pollo-deck-default` and the old key is cleared.
+Migration: on first load after the update, if the old `dekk-slides` key exists and no per-deck keys exist, the stored content is migrated to `dekk-deck-default` and the old key is cleared.
 
 #### Hash routing overhaul
 
@@ -184,7 +184,7 @@ The file-export feature writes `rawMarkdown` via blob download keyed to `deckMet
 
 | File | Change |
 |------|--------|
-| `src/core/loader.ts` | Replace `loadMarkdown()` with `loadDeck(deckId)` — checks per-deck localStorage key, falls back to registry entry. Add `saveDeckDraft(deckId, markdown)`, migrate old `marko-pollo-slides` key on first run. |
+| `src/core/loader.ts` | Replace `loadMarkdown()` with `loadDeck(deckId)` — checks per-deck localStorage key, falls back to registry entry. Add `saveDeckDraft(deckId, markdown)`, migrate old `dekk-slides` key on first run. |
 | `src/core/loader.test.ts` | New tests for `loadDeck`, `saveDeckDraft`, migration path |
 | `src/core/store.ts` | Add `currentDeck: string \| null` to `SlideState`; add `LOAD_DECK` and `UNLOAD_DECK` actions |
 | `src/core/store.test.ts` | Tests for new actions |
@@ -203,7 +203,7 @@ User visits /#/deck/rust-async-deep-dive/2
   → App renders <PresentationView />
   → useEffect dispatches LOAD_DECK
       → loadDeck('rust-async-deep-dive')
-          → checks localStorage 'marko-pollo-deck-rust-async-deep-dive'
+          → checks localStorage 'dekk-deck-rust-async-deep-dive'
           → falls back to deckRegistry.getDeck('rust-async-deep-dive').rawMarkdown
       → dispatch({ type: 'LOAD_DECK', deckId: 'rust-async-deep-dive', markdown })
   → slideReducer produces new state: { currentDeck: 'rust-async-deep-dive', slides: [...], currentIndex: 2 }
@@ -267,7 +267,7 @@ export function useRoute(): [Route, (route: Route) => void]
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  marko pollo                         [+ New]     │
+│  dekk                         [+ New]     │
 │─────────────────────────────────────────────────│
 │  ┌──────────────┐  ┌──────────────┐             │
 │  │ [thumbnail?] │  │ [thumbnail?] │             │
@@ -290,7 +290,7 @@ Card styling: `var(--mp-surface)` background, `var(--mp-primary)` border on hove
 ### Security Considerations
 
 - `deck-id` from the URL hash is used only for a registry lookup (`getDeck(id)`) and as a localStorage key. It never reaches the filesystem or a server. No path traversal risk.
-- LocalStorage keys are prefixed (`marko-pollo-deck-`) and the id is the verbatim hash segment; length-limit the id to 64 characters to prevent excessive localStorage key lengths.
+- LocalStorage keys are prefixed (`dekk-deck-`) and the id is the verbatim hash segment; length-limit the id to 64 characters to prevent excessive localStorage key lengths.
 - The import.meta.glob pattern is static; Vite resolves it at build time. No dynamic `import()` of user-supplied paths.
 - Per-deck localStorage content is the user's own markdown; the existing XSS protections in the renderer apply unchanged.
 
@@ -299,7 +299,7 @@ Card styling: `var(--mp-surface)` background, `var(--mp-primary)` border on hove
 **Unit tests:**
 - `deckRegistry.test.ts`: registry length matches folder count, `getDeck` returns correct entry, missing id returns `undefined`, `slideCount` is accurate
 - `route.test.ts`: `hashToRoute` / `routeToHash` round-trip for all four route shapes; invalid hash falls back to `{ view: 'picker' }`; slide index parsing handles NaN
-- `loader.test.ts`: `loadDeck` returns localStorage draft when present; falls back to registry; `saveDeckDraft` writes correct key; migration test: old `marko-pollo-slides` → `marko-pollo-deck-default`
+- `loader.test.ts`: `loadDeck` returns localStorage draft when present; falls back to registry; `saveDeckDraft` writes correct key; migration test: old `dekk-slides` → `dekk-deck-default`
 - `store.test.ts`: `LOAD_DECK` sets `currentDeck` and parses slides; `UNLOAD_DECK` resets to `initialState`
 
 **E2E tests (Playwright):**

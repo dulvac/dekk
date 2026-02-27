@@ -1,13 +1,13 @@
-# Marko Pollo - Project Context
+# Dekk - Project Context
 
 ## What is this?
 
-Marko Pollo is a static single-page web application for presenting markdown-authored slides with a branded dark cinematic visual identity. It targets developer talks at tech conferences, meetups, and internal engineering presentations.
+Dekk is a static single-page web application for presenting markdown-authored slides with a branded dark cinematic visual identity. It targets developer talks at tech conferences, meetups, and internal engineering presentations.
 
 ## Key Documents
 
-- **Design Document:** `docs/plans/2026-02-20-marko-pollo-design.md` - Full specification including requirements, architecture, visual identity, and component tree
-- **Original Implementation Plan:** `docs/plans/2026-02-20-marko-pollo-implementation.md` - 16-task build plan (core SPA)
+- **Design Document:** `docs/plans/2026-02-20-dekk-design.md` - Full specification including requirements, architecture, visual identity, and component tree
+- **Original Implementation Plan:** `docs/plans/2026-02-20-dekk-implementation.md` - 16-task build plan (core SPA)
 - **Cohesive Implementation Plan:** `docs/plans/2026-02-20-cohesive-implementation.md` - 4-phase feature suite (deploy, multi-deck, export, persistence)
 - **AI Activity Journal:** `docs/ai-journal.md` - Chronological record of all AI-assisted development sessions, decisions, and lessons learned
 - **Team Execution Log:** `docs/team-execution-log.md` - Rolling log of last 20 team sessions with interaction summaries and Mermaid diagrams
@@ -115,4 +115,4 @@ This project uses a team of specialized agents. See `.claude/agents/` for their 
 
 See `.claude/TEAM_WORKFLOW.md` for full team delegation rules, dispatch guidelines, and anti-patterns.
 
-**Quick reference:** Team name is `marko-pollo`. Spawn agents via `Task` tool with `team_name: "marko-pollo"`. Team lead coordinates only — never implements.
+**Quick reference:** Team name is `dekk`. Spawn agents via `Task` tool with `team_name: "dekk"`. Team lead coordinates only — never implements.

@@ -98,7 +98,7 @@ describe('saveToDevServer', () => {
 
     expect(result).toBe(true)
     expect(mockFetch).toHaveBeenCalledWith(
-      '/__marko-pollo/write-file',
+      '/__dekk/write-file',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,7 +170,7 @@ describe('saveToGitHub', () => {
     expect(mockCreateBranch).toHaveBeenCalledWith(
       'owner',
       'repo',
-      expect.stringContaining('marko-pollo-'),
+      expect.stringContaining('dekk-'),
       'def456',
       'ghp_token123'
     )
@@ -181,7 +181,7 @@ describe('saveToGitHub', () => {
       '# New Content',
       expect.stringContaining('Update presentation'),
       'abc123',
-      expect.stringContaining('marko-pollo-'),
+      expect.stringContaining('dekk-'),
       'ghp_token123'
     )
     expect(mockCreatePullRequest).toHaveBeenCalledWith(
@@ -189,7 +189,7 @@ describe('saveToGitHub', () => {
       'repo',
       expect.stringContaining('Update presentation'),
       expect.any(String),
-      expect.stringContaining('marko-pollo-'),
+      expect.stringContaining('dekk-'),
       'main',
       'ghp_token123'
     )

@@ -36,7 +36,7 @@ jobs:
         run: npm run lint
 
       - name: Build for GitHub Pages
-        run: npm run build -- --base /marko-pollo/
+        run: npm run build -- --base /dekk/
 
       - name: Run unit tests
         run: npx vitest run

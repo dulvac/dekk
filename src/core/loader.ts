@@ -1,8 +1,8 @@
 import { getDeck } from './deckRegistry'
 
-export const STORAGE_KEY = 'marko-pollo-slides'
-const DECK_KEY_PREFIX = 'marko-pollo-deck-'
-const OLD_STORAGE_KEY = 'marko-pollo-slides'
+export const STORAGE_KEY = 'dekk-slides'
+const DECK_KEY_PREFIX = 'dekk-deck-'
+const OLD_STORAGE_KEY = 'dekk-slides'
 
 export function saveToLocalStorage(markdown: string): boolean {
   try {

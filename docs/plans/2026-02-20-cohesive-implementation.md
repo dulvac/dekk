@@ -1,4 +1,4 @@
-# Marko Pollo Feature Suite — Cohesive Implementation Plan
+# Dekk Feature Suite — Cohesive Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -87,7 +87,7 @@ Append to `ci.yml` after the `build-and-test` job:
         run: npm ci
 
       - name: Build for GitHub Pages
-        run: npm run build -- --base /marko-pollo/
+        run: npm run build -- --base /dekk/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -158,13 +158,13 @@ git commit -m "refactor: move default slides to presentations/default/slides.md"
 
 **Step 1: Create example presentations**
 
-Create 3 example decks that showcase different Marko Pollo features. Each should use frontmatter with `title` and `author`, and exercise features like code blocks, Mermaid diagrams, tables, task lists, and emoji.
+Create 3 example decks that showcase different Dekk features. Each should use frontmatter with `title` and `author`, and exercise features like code blocks, Mermaid diagrams, tables, task lists, and emoji.
 
 **`presentations/intro-to-typescript/slides.md`** — A short tech talk (5-6 slides) about TypeScript basics. Exercises: code blocks with `typescript` language, bullet lists, bold/italic.
 
 **`presentations/architecture-patterns/slides.md`** — A software architecture talk (5-6 slides). Exercises: Mermaid diagrams (flowchart, sequence), tables, nested lists.
 
-**`presentations/getting-started/slides.md`** — A Marko Pollo tutorial deck (4-5 slides) explaining how to use the app. Exercises: keyboard shortcut reference, task lists, emoji.
+**`presentations/getting-started/slides.md`** — A Dekk tutorial deck (4-5 slides) explaining how to use the app. Exercises: keyboard shortcut reference, task lists, emoji.
 
 **Step 2: Verify all decks parse correctly**
 
@@ -653,7 +653,7 @@ git commit -m "feat: add LOAD_DECK/UNLOAD_DECK actions to store"
 // Add to loader.test.ts
 describe('loadDeck', () => {
   it('returns localStorage draft when present', () => {
-    localStorage.setItem('marko-pollo-deck-my-talk', '# Draft')
+    localStorage.setItem('dekk-deck-my-talk', '# Draft')
     const result = loadDeck('my-talk')
     expect(result).toBe('# Draft')
   })
@@ -672,16 +672,16 @@ describe('loadDeck', () => {
 describe('saveDeckDraft', () => {
   it('writes to deck-specific key', () => {
     saveDeckDraft('my-talk', '# Updated')
-    expect(localStorage.getItem('marko-pollo-deck-my-talk')).toBe('# Updated')
+    expect(localStorage.getItem('dekk-deck-my-talk')).toBe('# Updated')
   })
 })
 
 describe('migration', () => {
   it('migrates old key to default deck', () => {
-    localStorage.setItem('marko-pollo-slides', '# Old Content')
+    localStorage.setItem('dekk-slides', '# Old Content')
     migrateOldStorage()
-    expect(localStorage.getItem('marko-pollo-deck-default')).toBe('# Old Content')
-    expect(localStorage.getItem('marko-pollo-slides')).toBeNull()
+    expect(localStorage.getItem('dekk-deck-default')).toBe('# Old Content')
+    expect(localStorage.getItem('dekk-slides')).toBeNull()
   })
 })
 ```
@@ -695,8 +695,8 @@ Replace the existing `loadMarkdown()` with new functions. Keep `saveToLocalStora
 ```typescript
 import { getDeck } from './deckRegistry'
 
-const DECK_KEY_PREFIX = 'marko-pollo-deck-'
-const OLD_STORAGE_KEY = 'marko-pollo-slides'
+const DECK_KEY_PREFIX = 'dekk-deck-'
+const OLD_STORAGE_KEY = 'dekk-slides'
 
 export function loadDeck(deckId: string): string | null {
   try {
@@ -805,7 +805,7 @@ export function PickerView({ entries, onSelectDeck }: PickerViewProps) {
   return (
     <div className={styles.pickerView}>
       <header className={styles.header}>
-        <h1 className={styles.logo}>marko pollo</h1>
+        <h1 className={styles.logo}>dekk</h1>
       </header>
       <div className={styles.grid}>
         {entries.map((entry) => (
@@ -949,10 +949,10 @@ The root URL now shows the Picker. Tests need to navigate to a specific deck fir
 ```typescript
 import { test, expect } from '@playwright/test'
 
-test.describe('Marko Pollo E2E', () => {
+test.describe('Dekk E2E', () => {
   test('root shows presentation picker', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('marko pollo')).toBeVisible()
+    await expect(page.getByText('dekk')).toBeVisible()
     // At least the default deck should appear
     await expect(page.getByRole('button')).toHaveCount.greaterThanOrEqual(1)
   })
@@ -996,7 +996,7 @@ test.describe('Marko Pollo E2E', () => {
     await page.getByRole('button').first().click()
     await expect(page).toHaveURL(/#deck\//)
     await page.goBack()
-    await expect(page.getByText('marko pollo')).toBeVisible()
+    await expect(page.getByText('dekk')).toBeVisible()
   })
 })
 ```
@@ -1392,15 +1392,15 @@ function validateWritePath(root: string, rawPath: string): string | null {
 
 export function vitePluginDevWrite(): Plugin {
   return {
-    name: 'marko-pollo-dev-write',
+    name: 'dekk-dev-write',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use('/__marko-pollo/ping', (_req, res) => {
+      server.middlewares.use('/__dekk/ping', (_req, res) => {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ ok: true }))
       })
 
-      server.middlewares.use('/__marko-pollo/write-file', async (req, res) => {
+      server.middlewares.use('/__dekk/write-file', async (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405
           res.end('Method not allowed')
@@ -1529,19 +1529,19 @@ describe('token-store', () => {
 
   it('stores in sessionStorage by default', () => {
     setToken('ghp_test123', 'session')
-    expect(sessionStorage.getItem('marko-pollo-github-token')).toBe('ghp_test123')
-    expect(localStorage.getItem('marko-pollo-github-token')).toBeNull()
+    expect(sessionStorage.getItem('dekk-github-token')).toBe('ghp_test123')
+    expect(localStorage.getItem('dekk-github-token')).toBeNull()
   })
 
   it('stores in localStorage when opted in', () => {
     setToken('ghp_test123', 'local')
-    expect(localStorage.getItem('marko-pollo-github-token')).toBe('ghp_test123')
+    expect(localStorage.getItem('dekk-github-token')).toBe('ghp_test123')
   })
 
   it('getToken checks sessionStorage first then localStorage', () => {
-    localStorage.setItem('marko-pollo-github-token', 'ghp_local')
+    localStorage.setItem('dekk-github-token', 'ghp_local')
     expect(getToken()).toBe('ghp_local')
-    sessionStorage.setItem('marko-pollo-github-token', 'ghp_session')
+    sessionStorage.setItem('dekk-github-token', 'ghp_session')
     expect(getToken()).toBe('ghp_session')
   })
 
@@ -1724,7 +1724,7 @@ Use `page.route()` to mock GitHub API calls and dev server write endpoint. Do NO
 ```typescript
 test('dev save button triggers file write', async ({ page }) => {
   await page.goto('/#deck/default/editor')
-  await page.route('**/__marko-pollo/write-file', route =>
+  await page.route('**/__dekk/write-file', route =>
     route.fulfill({ status: 200, body: JSON.stringify({ ok: true }) })
   )
   // Click save button, verify success indicator
@@ -1773,7 +1773,7 @@ git commit -m "test: add cross-feature integration tests"
 - [ ] All E2E tests pass (`npx playwright test`)
 - [ ] Lint passes (`npm run lint`)
 - [ ] Build succeeds (`npm run build`)
-- [ ] Build with base path succeeds (`npm run build -- --base /marko-pollo/`)
+- [ ] Build with base path succeeds (`npm run build -- --base /dekk/`)
 - [ ] Dev server starts without errors (`npm run dev`)
 - [ ] PickerView shows all presentations from `presentations/` folder
 - [ ] Clicking a deck navigates to presentation view

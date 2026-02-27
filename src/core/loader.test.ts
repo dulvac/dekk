@@ -90,7 +90,7 @@ describe('loadMarkdown', () => {
 
 describe('loadDeck', () => {
   it('returns localStorage draft when present', () => {
-    localStorage.setItem('marko-pollo-deck-my-talk', '# Draft')
+    localStorage.setItem('dekk-deck-my-talk', '# Draft')
     const result = loadDeck('my-talk')
     expect(result).toBe('# Draft')
   })
@@ -103,15 +103,15 @@ describe('loadDeck', () => {
 describe('saveDeckDraft', () => {
   it('writes to deck-specific key', () => {
     saveDeckDraft('my-talk', '# Updated')
-    expect(localStorage.getItem('marko-pollo-deck-my-talk')).toBe('# Updated')
+    expect(localStorage.getItem('dekk-deck-my-talk')).toBe('# Updated')
   })
 })
 
 describe('migration', () => {
   it('migrates old key to default deck', () => {
-    localStorage.setItem('marko-pollo-slides', '# Old Content')
+    localStorage.setItem('dekk-slides', '# Old Content')
     migrateOldStorage()
-    expect(localStorage.getItem('marko-pollo-deck-default')).toBe('# Old Content')
-    expect(localStorage.getItem('marko-pollo-slides')).toBeNull()
+    expect(localStorage.getItem('dekk-deck-default')).toBe('# Old Content')
+    expect(localStorage.getItem('dekk-slides')).toBeNull()
   })
 })

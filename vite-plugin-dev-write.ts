@@ -14,15 +14,15 @@ export function validateWritePath(root: string, rawPath: string): string | null 
 
 export function vitePluginDevWrite(): Plugin {
   return {
-    name: 'marko-pollo-dev-write',
+    name: 'dekk-dev-write',
     apply: 'serve',
     configureServer(server) {
-      server.middlewares.use('/__marko-pollo/ping', (_req, res) => {
+      server.middlewares.use('/__dekk/ping', (_req, res) => {
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify({ ok: true }))
       })
 
-      server.middlewares.use('/__marko-pollo/write-file', async (req, res) => {
+      server.middlewares.use('/__dekk/write-file', async (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405
           res.end('Method not allowed')

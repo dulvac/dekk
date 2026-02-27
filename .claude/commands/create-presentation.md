@@ -3,7 +3,7 @@ description: "Create a new slide deck presentation. Use when asked to make, crea
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
-Create a new Marko Pollo slide deck.
+Create a new Dekk slide deck.
 
 ## Format Reference
 

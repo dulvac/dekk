@@ -1,9 +1,9 @@
 ---
-title: Marko Pollo Demo
-author: Marko Pollo
+title: Dekk Demo
+author: Dekk
 ---
 
-# Marko Pollo :rocket:
+# Dekk :rocket:
 
 A beautiful slide deck engine for developers
 

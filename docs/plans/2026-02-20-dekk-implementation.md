@@ -1,4 +1,4 @@
-# Marko Pollo Implementation Plan
+# Dekk Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 18, TypeScript, Vite, unified/remark/rehype, react-markdown, Shiki (code highlighting), Mermaid.js (diagrams), CodeMirror 6 (editor), CSS Modules + custom properties.
 
-**Design doc:** `docs/plans/2026-02-20-marko-pollo-design.md`
+**Design doc:** `docs/plans/2026-02-20-dekk-design.md`
 
 ---
 
@@ -1911,7 +1911,7 @@ Create `src/core/loader.ts`:
 ```typescript
 import defaultSlides from '../assets/slides.md?raw'
 
-export const STORAGE_KEY = 'marko-pollo-slides'
+export const STORAGE_KEY = 'dekk-slides'
 
 export function saveToLocalStorage(markdown: string): void {
   try {

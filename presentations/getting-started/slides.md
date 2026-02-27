@@ -1,9 +1,9 @@
 ---
-title: Getting Started with Marko Pollo
-author: Marko Pollo Team
+title: Getting Started with Dekk
+author: Dekk Team
 ---
 
-# Getting Started with Marko Pollo :rocket:
+# Getting Started with Dekk :rocket:
 
 Your guide to creating beautiful developer presentations
 

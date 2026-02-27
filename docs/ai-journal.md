@@ -1,4 +1,4 @@
-# Marko Pollo - AI Activity Journal
+# Dekk - AI Activity Journal
 
 A record of how AI agents are used on this project. Written for humans.
 
@@ -6,7 +6,7 @@ A record of how AI agents are used on this project. Written for humans.
 
 ## 2026-02-20 — Team Formation & Design Review
 
-**What happened:** The Marko Pollo development team was established and immediately tasked with reviewing the design document and 16-task implementation plan before any code was written.
+**What happened:** The Dekk development team was established and immediately tasked with reviewing the design document and 16-task implementation plan before any code was written.
 
 **Team assembled:**
 
@@ -45,7 +45,7 @@ A record of how AI agents are used on this project. Written for humans.
 
 ## 2026-02-20 — Full Implementation of 16-Task Plan
 
-**What happened:** Complete implementation of the Marko Pollo slide presentation tool, from empty project to fully functional SPA with 37 passing tests and a clean production build. All 16 tasks from the implementation plan were executed, covering scaffolding, parsing, rendering, views, and editor.
+**What happened:** Complete implementation of the Dekk slide presentation tool, from empty project to fully functional SPA with 37 passing tests and a clean production build. All 16 tasks from the implementation plan were executed, covering scaffolding, parsing, rendering, views, and editor.
 
 **Agents involved:**
 - **Rex (frontend specialist)** — Started Phase 1, implemented Tasks 1-4 (scaffolding, CSS foundation, remark-slides plugin, markdown parser). Hit turn limit after 4 tasks.
@@ -207,10 +207,10 @@ fe35698 - feat: add remark-slides plugin, markdown parser, and slide store
 - Proper delegation of testing work to Turing
 
 **Files updated:**
-- `/Users/adulvac/work/marko-pollo/.claude/agents/rex-frontend.md`
-- `/Users/adulvac/work/marko-pollo/.claude/agents/turing-qa.md`
-- `/Users/adulvac/work/marko-pollo/CLAUDE.md`
-- `/Users/adulvac/work/marko-pollo/docs/ai-journal.md` (this entry)
+- `/Users/adulvac/work/dekk/.claude/agents/rex-frontend.md`
+- `/Users/adulvac/work/dekk/.claude/agents/turing-qa.md`
+- `/Users/adulvac/work/dekk/CLAUDE.md`
+- `/Users/adulvac/work/dekk/docs/ai-journal.md` (this entry)
 
 **No code changes in this session.** This was a process improvement and documentation update session.
 
@@ -240,7 +240,7 @@ fe35698 - feat: add remark-slides plugin, markdown parser, and slide store
 2. **Vendor chunking** — Split heavy libraries into separate chunks: `mermaid.js`, `shiki`, and `codemirror` bundles load on-demand when features are actually used.
 3. **Dynamic imports** — Parser utilities, highlighter initialization, and Mermaid configuration all use dynamic imports to defer loading until needed.
 
-**Why this works particularly well for Marko Pollo:** The application has distinct usage modes with non-overlapping dependencies:
+**Why this works particularly well for Dekk:** The application has distinct usage modes with non-overlapping dependencies:
 - **Presentation mode** — Users navigating slides don't need CodeMirror (editor) or Mermaid (until a diagram slide appears)
 - **Editor mode** — Users editing markdown don't need Shiki syntax highlighting until they insert a code block
 - **Overview mode** — Thumbnail grid doesn't need full rendering capabilities until user clicks a slide
@@ -296,7 +296,7 @@ This phase was a perfect example of the delegation pattern working as intended:
 ### Findings (10 items, rated by severity)
 
 **1. HIGH: /team-review command doesn't enforce team infrastructure**
-The command says "spawn the following agents as a team" but doesn't specify using `team_name: "marko-pollo"`. This could lead to the exact anti-pattern documented in CLAUDE.md #5 (spawning standalone agents outside the team). The command should explicitly state that all agents must be spawned via the team infrastructure.
+The command says "spawn the following agents as a team" but doesn't specify using `team_name: "dekk"`. This could lead to the exact anti-pattern documented in CLAUDE.md #5 (spawning standalone agents outside the team). The command should explicitly state that all agents must be spawned via the team infrastructure.
 
 **2. MEDIUM: CLAUDE.md at 155 lines, exceeds self-imposed 100-line guideline**
 Eliza's own constraint says "keep CLAUDE.md under 100 lines." The team workflow section (lines 74-155) adds 80+ lines. This content is genuinely valuable — it prevents real anti-patterns — but bloats context for every session. Consider extracting team workflow rules to a dedicated file (e.g., `.claude/TEAM_WORKFLOW.md`) and keeping CLAUDE.md as a concise reference.
@@ -320,7 +320,7 @@ Eliza's responsibilities include "Skills Suggestions" but no reusable skills hav
 The command restricts `allowed-tools` to Bash, Read, Write, Edit, Glob, Grep — excluding Task and SendMessage. This means an agent running `/implement-task 7` can't delegate sub-work or communicate with the team. This is intentional for focused implementation but should be documented as "single-agent mode, no team coordination."
 
 **9. LOW: Agent definitions don't reference team config location**
-Agents spawned into the team should know where to find team info (`~/.claude/teams/marko-pollo/config.json`), but their definition files don't mention this. This matters for agents that might need to discover or message other teammates.
+Agents spawned into the team should know where to find team info (`~/.claude/teams/dekk/config.json`), but their definition files don't mention this. This matters for agents that might need to discover or message other teammates.
 
 **10. LOW: Journal project structure section can go stale**
 The "AI-Native Project Structure" file tree at the bottom of this journal is a manual snapshot. If new files are added (hooks, skills, new agents), this section becomes inaccurate. Consider either removing it (since `CLAUDE.md` serves the same purpose) or marking it as "last updated: [date]."
@@ -366,7 +366,7 @@ The 1 HIGH and 5 MEDIUM findings are all addressable improvements, not fundament
 2. Specific triggers for when to check docs (not "always" — targeted to moments where stale knowledge is risky)
 3. A library checklist specific to the agent's domain
 
-**Command fix:** The `/team-review` command was updated to explicitly require `team_name: "marko-pollo"` with a CRITICAL warning, agent `name` parameters listed for each team member, and a reminder to use `TaskCreate` for tracking. This directly addresses the HIGH finding from Entry #5.
+**Command fix:** The `/team-review` command was updated to explicitly require `team_name: "dekk"` with a CRITICAL warning, agent `name` parameters listed for each team member, and a reminder to use `TaskCreate` for tracking. This directly addresses the HIGH finding from Entry #5.
 
 **Files modified (7 total):**
 - `.claude/agents/rex-frontend.md` — Added "Staying Current" section with 7 key libraries
@@ -564,7 +564,7 @@ fe0f0df test: update test fixtures for currentDeck state field
 ## AI-Native Project Structure
 
 ```
-marko-pollo/
+dekk/
 ├── CLAUDE.md                          # Project context for AI agents (~85 lines)
 ├── .claude/
 │   ├── settings.json                  # Permissions (incl. Playwright, tsc)

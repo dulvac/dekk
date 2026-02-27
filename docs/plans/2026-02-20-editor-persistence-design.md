@@ -2,7 +2,7 @@
 
 ## Problem
 
-Editor changes in Marko Pollo persist only to `localStorage`. This is sufficient for session continuity but does not write changes back to the source `.md` file. When a user edits their slide deck in the browser, those edits are stranded in the browser — they cannot be committed to git, shared, or recovered if localStorage is cleared.
+Editor changes in Dekk persist only to `localStorage`. This is sufficient for session continuity but does not write changes back to the source `.md` file. When a user edits their slide deck in the browser, those edits are stranded in the browser — they cannot be committed to git, shared, or recovered if localStorage is cleared.
 
 Two deployment contexts need different persistence strategies:
 
@@ -20,13 +20,13 @@ Provide a "Save" action in the editor that persists the current `rawMarkdown` to
 1. **Local dev write** — When running `npm run dev`, a "Save" button in the editor writes the current markdown to `src/assets/slides.md` on disk via a Vite dev server endpoint. The file on disk is updated immediately; no PR, no git operation.
 
 2. **Environment detection** — The app detects its runtime context at startup:
-   - **Dev**: Vite injects `import.meta.env.DEV === true` at build time. Additionally, perform a runtime probe (one `GET /__marko-pollo/ping`) to confirm the write endpoint is available. This double-check handles `vite preview` (built app served by Vite but write endpoint absent) correctly.
+   - **Dev**: Vite injects `import.meta.env.DEV === true` at build time. Additionally, perform a runtime probe (one `GET /__dekk/ping`) to confirm the write endpoint is available. This double-check handles `vite preview` (built app served by Vite but write endpoint absent) correctly.
    - **GitHub Pages**: `import.meta.env.DEV === false` and the probe 404s.
 
 3. **GitHub PR save** — On GitHub Pages, Save triggers a GitHub API flow:
    1. Obtain a GitHub token (PAT or OAuth — see below).
    2. Fetch the current file SHA from `GET /repos/{owner}/{repo}/contents/{path}`.
-   3. Create a new branch `marko-pollo/update-slides-{timestamp}`.
+   3. Create a new branch `dekk/update-slides-{timestamp}`.
    4. Commit the updated file content to that branch via `PUT /repos/{owner}/{repo}/contents/{path}`.
    5. Open a pull request from that branch to the repo's default branch.
    6. Show the user a link to the created PR.
@@ -44,7 +44,7 @@ Provide a "Save" action in the editor that persists the current `rawMarkdown` to
    - Requires a registered GitHub OAuth App; `client_id` is a build-time env var (`VITE_GITHUB_CLIENT_ID`)
    - Nice-to-have because it requires app registration setup; PAT is zero-infrastructure
 
-7. **Conflict detection (dev)** — Record the file's `mtime` when the app loads. Before writing, re-stat the file via `GET /__marko-pollo/stat`. If the mtime has changed, show a warning: "The file was modified outside the editor since you loaded it. Overwrite anyway?"
+7. **Conflict detection (dev)** — Record the file's `mtime` when the app loads. Before writing, re-stat the file via `GET /__dekk/stat`. If the mtime has changed, show a warning: "The file was modified outside the editor since you loaded it. Overwrite anyway?"
 
 8. **Conflict detection (GitHub)** — Store the `sha` returned by the initial contents fetch. Before creating the PR branch, re-fetch the file and compare SHA. If it has changed, show the same overwrite warning.
 
@@ -72,8 +72,8 @@ Provide a "Save" action in the editor that persists the current `rawMarkdown` to
 - Vite's built-in proxy config — cannot write files, only proxies requests
 
 **Decision: Vite plugin.** The `configureServer` hook receives the Connect middleware instance and the project root. Add two routes:
-- `GET /__marko-pollo/ping` — returns `{"ok": true}` (used for environment detection)
-- `POST /__marko-pollo/write-file` with `{ path: string; content: string }` — writes the file
+- `GET /__dekk/ping` — returns `{"ok": true}` (used for environment detection)
+- `POST /__dekk/write-file` with `{ path: string; content: string }` — writes the file
 
 The plugin lives in `vite-plugin-dev-write.ts` at the project root (not in `src/`). It is applied in `vite.config.ts` only in dev mode.
 
@@ -150,8 +150,8 @@ export function vitePluginDevWrite(): Plugin
 ```
 
 The plugin's `configureServer` handler registers:
-- `GET /__marko-pollo/ping` → `200 { ok: true }`
-- `POST /__marko-pollo/write-file` body `{ path: string; content: string }` → `200 { ok: true }` or `400/403`
+- `GET /__dekk/ping` → `200 { ok: true }`
+- `POST /__dekk/write-file` body `{ path: string; content: string }` → `200 { ok: true }` or `400/403`
 
 Path validation: only accepts paths matching `/^src\/[a-zA-Z0-9_/-]+\.md$/` after `path.resolve(root, path)`. Returns `403` if the resolved path escapes the project root.
 
@@ -253,7 +253,7 @@ export function getTokenPersistence(): TokenPersistence | null
 ```
 User clicks Save
   → EditorView calls saveToDevServer('src/assets/slides.md', rawMarkdown)
-  → persistence.ts: POST /__marko-pollo/write-file { path, content }
+  → persistence.ts: POST /__dekk/write-file { path, content }
   → vite-plugin-dev-write.ts validates path, writes file with fs.writeFile
   → Response 200 → EditorView updates lastSavedRef, shows "Saved" for 2s
   → Response 4xx/network error → EditorView shows error message
@@ -270,7 +270,7 @@ User clicks Save
   → github-api.ts:
       1. getDefaultBranch → "main"
       2. getFileContents → { sha: currentFileSha }
-      3. createBranch "marko-pollo/update-slides-{timestamp}" from HEAD SHA
+      3. createBranch "dekk/update-slides-{timestamp}" from HEAD SHA
       4. updateFileContents → commits file to new branch
       5. createPullRequest → returns prUrl
   → EditorView shows "PR opened ↗" link for 10s, then idle
@@ -281,7 +281,7 @@ User clicks Save
 ```
 App mounts (App.tsx or EditorView mounts)
   → import.meta.env.DEV === true ?
-      YES → fetch GET /__marko-pollo/ping
+      YES → fetch GET /__dekk/ping
               200 → environment = 'dev'
               else → environment = 'unknown'
       NO  → detectGitHubRepo()
@@ -389,7 +389,7 @@ The dev server endpoint is accessed at `http://localhost:{port}` from the same o
 - All GitHub API requests use `https://` only
 - Requests include `Authorization: Bearer {token}` header (not basic auth)
 - Content is base64-encoded for the GitHub Contents API (standard requirement)
-- PR branch names are sanitised: `marko-pollo/update-slides-` + timestamp (no user-controlled input in the branch name unless the deck title is used, in which case apply `slugify()`)
+- PR branch names are sanitised: `dekk/update-slides-` + timestamp (no user-controlled input in the branch name unless the deck title is used, in which case apply `slugify()`)
 
 ## Testing
 

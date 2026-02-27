@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Marko Pollo E2E', () => {
+test.describe('Dekk E2E', () => {
   test('root shows presentation picker', async ({ page }) => {
     await page.goto('./')
-    await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'dekk' })).toBeVisible()
     // At least the default deck should appear
     const buttons = page.getByRole('button')
     await expect(buttons.first()).toBeVisible()
@@ -54,7 +54,7 @@ test.describe('Marko Pollo E2E', () => {
     await page.getByRole('button').first().click()
     await expect(page).toHaveURL(/#deck\//)
     await page.goBack()
-    await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'dekk' })).toBeVisible()
   })
 
   test('Ctrl+S downloads presentation as .md', async ({ page }) => {
@@ -83,11 +83,11 @@ test.describe('Marko Pollo E2E', () => {
     await expect(page.locator('.cm-editor')).toBeVisible()
 
     // Mock the dev server write endpoint
-    await page.route('**/__marko-pollo/write-file', route =>
+    await page.route('**/__dekk/write-file', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
     )
     // Mock the ping endpoint to indicate dev environment
-    await page.route('**/__marko-pollo/ping', route =>
+    await page.route('**/__dekk/ping', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
     )
 
@@ -115,7 +115,7 @@ test.describe('Marko Pollo E2E', () => {
 
     // Verify localStorage has the draft
     const stored = await page.evaluate(() =>
-      localStorage.getItem('marko-pollo-deck-default')
+      localStorage.getItem('dekk-deck-default')
     )
     expect(stored).toContain('# Persisted Slide')
 
@@ -153,7 +153,7 @@ test.describe('Marko Pollo E2E', () => {
 
   test('picker shows all presentations from presentations/ folder', async ({ page }) => {
     await page.goto('./')
-    await expect(page.getByRole('heading', { name: 'marko pollo' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'dekk' })).toBeVisible()
 
     // There should be at least 4 decks (default, architecture-patterns, getting-started, intro-to-typescript)
     const buttons = page.getByRole('button')

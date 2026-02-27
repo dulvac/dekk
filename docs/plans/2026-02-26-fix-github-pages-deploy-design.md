@@ -30,7 +30,7 @@ Steps in order:
 2. **Setup Node 20** — `actions/setup-node@v4` with npm cache
 3. **Install dependencies** — `npm ci`
 4. **Lint** — `npm run lint`
-5. **Build for GitHub Pages** — `npm run build -- --base /marko-pollo/`
+5. **Build for GitHub Pages** — `npm run build -- --base /dekk/`
 6. **Run unit tests** — `npx vitest run`
 7. **Install Playwright** — `npx playwright install --with-deps chromium`
 8. **Run E2E tests** — `npx playwright test` (against `vite preview`)
@@ -81,5 +81,5 @@ Prevents overlapping deployments.
 
 ## Risks
 
-- **E2E base path:** The preview server in CI will serve at `/marko-pollo/` base path. Playwright's `baseURL` must account for this (set to `http://localhost:5173/marko-pollo/`).
+- **E2E base path:** The preview server in CI will serve at `/dekk/` base path. Playwright's `baseURL` must account for this (set to `http://localhost:5173/dekk/`).
 - **Preview server startup:** `vite preview` requires `dist/` to exist before starting. Since build runs before E2E, this is satisfied.

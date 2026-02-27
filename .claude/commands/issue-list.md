@@ -3,7 +3,7 @@ description: List open GitHub issues, optionally filtered by label (e.g., /issue
 allowed-tools: Bash
 ---
 
-List open GitHub issues for the `dulvac/marko-pollo` repository.
+List open GitHub issues for the `dulvac/dekk` repository.
 
 ## Steps
 
@@ -12,11 +12,11 @@ List open GitHub issues for the `dulvac/marko-pollo` repository.
 2. **Fetch issues**:
    - If `$ARGUMENTS` is non-empty, treat it as a label filter:
      ```
-     gh issue list --repo dulvac/marko-pollo --state open --label "$ARGUMENTS" --json number,title,labels,assignees,createdAt --limit 50
+     gh issue list --repo dulvac/dekk --state open --label "$ARGUMENTS" --json number,title,labels,assignees,createdAt --limit 50
      ```
    - If `$ARGUMENTS` is empty, list all open issues:
      ```
-     gh issue list --repo dulvac/marko-pollo --state open --json number,title,labels,assignees,createdAt --limit 50
+     gh issue list --repo dulvac/dekk --state open --json number,title,labels,assignees,createdAt --limit 50
      ```
 
 3. **Format output** as a readable table with columns: `#`, `Title`, `Labels`, `Assignees`, `Created`.

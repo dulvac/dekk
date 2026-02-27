@@ -1,13 +1,13 @@
-# Marko Pollo - Team Workflow Rules
+# Dekk - Team Workflow Rules
 
 This document governs how the agent team operates. Referenced from `CLAUDE.md`.
 
 ## Team Infrastructure
 
-This project uses a persistent agent team named `marko-pollo`. The team lead MUST use the team infrastructure for all work:
+This project uses a persistent agent team named `dekk`. The team lead MUST use the team infrastructure for all work:
 
-- **Team name:** `marko-pollo`
-- **Spawn agents via:** `Task` tool with `team_name: "marko-pollo"` and `name: "<agent-name>"`
+- **Team name:** `dekk`
+- **Spawn agents via:** `Task` tool with `team_name: "dekk"` and `name: "<agent-name>"`
 - **Agent definitions:** `.claude/agents/` directory (rex-frontend.md, turing-qa.md, ada-architect.md, sage-security.md, eliza-ai-native.md)
 - **Task tracking:** Use TaskCreate/TaskUpdate/TaskList for all work items
 - **Communication:** Use SendMessage for agent coordination, NOT standalone Task agents
@@ -18,7 +18,7 @@ This project uses a persistent agent team named `marko-pollo`. The team lead MUS
 
 Your ONLY responsibilities as team lead are:
 1. **Coordinate** - Understand the user's request and plan the work
-2. **Dispatch** - Spawn team agents with `team_name: "marko-pollo"` for tasks
+2. **Dispatch** - Spawn team agents with `team_name: "dekk"` for tasks
 3. **Review** - Evaluate agent output for completeness and quality
 4. **Commit** - Create git commits after work is approved
 5. **Communicate** - Report progress and results to the user
@@ -70,7 +70,7 @@ These mistakes have happened before. Learn from them:
 
 5. **Spawning standalone agents outside the team**
    - WRONG: `Task` tool with just `subagent_type: "general-purpose"` (no team_name)
-   - RIGHT: `Task` tool with `team_name: "marko-pollo"` and `name: "Rex"` (or other agent name)
+   - RIGHT: `Task` tool with `team_name: "dekk"` and `name: "Rex"` (or other agent name)
    - Standalone agents bypass team visibility — the user can't see their status
 
 6. **Taking over when an agent hits a turn limit**
@@ -154,7 +154,7 @@ Stale agents waste resources and clutter the team roster. Follow these rules to 
 
 1. **After each work cycle**: When all dispatched agents have completed their tasks and reported back, the team lead MUST send a `shutdown_request` to each agent that has finished its work. Do not leave completed agents idle.
 
-2. **Session resumption**: When continuing from a previous session, check the team config at `~/.claude/teams/marko-pollo/config.json` for stale members with `isActive: false`. Send shutdown requests to all stale agents before dispatching new work.
+2. **Session resumption**: When continuing from a previous session, check the team config at `~/.claude/teams/dekk/config.json` for stale members with `isActive: false`. Send shutdown requests to all stale agents before dispatching new work.
 
 3. **Agent naming**: When dispatching new instances of the same role (e.g., Ada doing a second review), use descriptive suffixes (e.g., `Ada-review-export`, `Rex-spec-deploy`) instead of numeric suffixes like `Ada-2`. This keeps the team roster readable at a glance.
 

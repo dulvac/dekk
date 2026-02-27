@@ -1,5 +1,5 @@
 ---
-title: "Building with Agents: The Marko Pollo Story"
+title: "Building with Agents: The Dekk Story"
 author: Andrei Dulvac
 date: 2026-02-27
 ---
@@ -10,7 +10,7 @@ The story of a project built by an AI team
 
 ---
 
-## What is Marko Pollo?
+## What is Dekk?
 
 A **static single-page application** for presenting markdown-authored slides with a branded dark cinematic visual identity.
 
@@ -300,7 +300,7 @@ Born from the button contrast bug, Eliza created a reusable `/visual-qa` skill:
 
 ## Thank You
 
-:globe_with_meridians: Built with **Marko Pollo** — a slide deck app built by its own agent team
+:globe_with_meridians: Built with **Dekk** — a slide deck app built by its own agent team
 
 :hammer_and_wrench: Powered by **Claude Code** + specialized agent definitions
 
