@@ -161,3 +161,50 @@ Stale agents waste resources and clutter the team roster. Follow these rules to 
 4. **Max concurrent agents**: Keep active agent count at 5 or fewer unless parallel work explicitly requires more. Exceeding this without a clear reason is a sign of poor coordination.
 
 5. **Cleanup before commit**: Before committing work at the end of a task cycle, ensure all agents that contributed are shut down cleanly. A clean shutdown confirms the agent's work is complete and logged.
+
+## Issue Swarm Protocol
+
+When `/issue-swarm` is invoked, the main orchestrator dispatches a **full agent team per issue**, with multiple issue teams running in parallel. This is a hierarchical dispatch: the orchestrator spawns team leads, each team lead coordinates its own agents.
+
+**Note:** The 5-agent concurrency limit does NOT apply during swarms. Each issue team operates independently in its own worktree and manages its own agent lifecycle.
+
+### Swarm Architecture
+
+```
+Orchestrator (you)
+├── lead-issue-42 (worktree) ── creates team "issue-42"
+│   ├── Rex (implement)
+│   ├── Ada (architecture review)
+│   ├── Turing (test & verify)
+│   └── Sage (security review, if needed)
+├── lead-issue-15 (worktree) ── creates team "issue-15"
+│   ├── Rex (implement)
+│   ├── Ada (architecture review)
+│   ├── Turing (test & verify)
+│   └── Sage (security review, if needed)
+└── ... up to 5 issue teams in parallel
+```
+
+### Swarm Steps
+
+1. **Fetch** open issues via `gh issue list --json number,title,labels,body` (cap at 5 issues)
+2. **Map labels to branches**: `bug` -> `fix/`, `documentation` -> `docs/`, default -> `feature/`
+3. **Spawn one team lead per issue** via `Task` with `isolation: "worktree"` — all in a single parallel dispatch
+4. **Each team lead**:
+   - Creates a team (`TeamCreate` with `team_name: "issue-{number}"`)
+   - Dispatches Rex to implement, then Ada + Sage to review, then Turing to verify
+   - Iterates on review findings until all agents approve
+   - Commits, pushes, and creates PR with `Closes #{number}`
+   - Shuts down its agents and deletes its team
+5. **Orchestrator monitors** team lead output, collects PR URLs, reports summary
+6. **Log everything** per Communication Logging Protocol
+
+### Team Lead Responsibilities (per issue)
+
+Each issue team lead coordinates — does NOT implement:
+- Dispatch Rex for implementation (TDD, CSS Modules, conventional commits)
+- Dispatch Ada for architecture review
+- Dispatch Sage for security review (skip for pure styling issues)
+- Dispatch Turing for test suite and build verification
+- Iterate: if reviews find issues, re-dispatch Rex to fix, then re-verify
+- Create PR with `Closes #{issue-number}` after all agents approve

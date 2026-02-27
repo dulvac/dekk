@@ -37,7 +37,12 @@ Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are 
 ## Git Workflow
 
 - **Never commit directly to master.** All work must be on a branch.
-- **Branch naming:** `feature/<short-description>` for new features, `fix/<short-description>` for bug fixes (e.g., `feature/export-pdf`, `fix/button-contrast`).
+- **Branch naming:** Include the GitHub issue number when working on a tracked issue:
+  - `feature/<issue#>-<short-desc>` — new features (e.g., `feature/15-export-pdf`)
+  - `fix/<issue#>-<short-desc>` — bug fixes (e.g., `fix/42-button-contrast`)
+  - `docs/<issue#>-<short-desc>` — documentation (e.g., `docs/7-update-readme`)
+  - Without an issue: `feature/<short-desc>` or `fix/<short-desc>` (unchanged)
+- **PR linking:** PR body MUST include `Closes #<issue-number>` to auto-close the issue on merge.
 - **Conventional Commits:** All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) spec:
   - `feat: add export to PDF` — new feature
   - `fix: correct button contrast ratio` — bug fix
@@ -50,6 +55,14 @@ Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are 
   - Scope is optional: `feat(editor): add save shortcut`
   - Breaking changes: `feat!: change slide metadata format` or add `BREAKING CHANGE:` footer
 - **Create a PR** to merge back into master when work is complete.
+
+## Issue Management
+
+- `/issue-list [label]` — list open issues, optionally filtered by label
+- `/issue-create "title" [--label name] [--body "text"]` — create an issue
+- `/issue-close <number> ["comment"]` — close an issue
+- `/issue-swarm [label]` — dispatch parallel agents to work on open issues
+- Label-to-branch mapping: `bug` -> `fix/`, `enhancement` -> `feature/`, `documentation` -> `docs/`
 
 ## Coding Standards
 
