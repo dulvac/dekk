@@ -83,6 +83,7 @@ Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are 
   - Screenshots should be taken during E2E testing to verify visual correctness
   - Rex must visually verify all UI changes before declaring work complete
   - Turing must include visual inspection as part of E2E verification
+- **PR Screenshots**: PRs that fix visual bugs or change visual aspects MUST include before/after screenshots in the PR body. Capture the relevant area before starting work and after completing it.
 - **GFM Feature Requirement**: When "GFM support" (GitHub Flavored Markdown) is listed as a feature:
   - ALL GFM elements must have branded styling, not just parsing support
   - Tables, strikethrough, task lists, autolinks must be visually styled
