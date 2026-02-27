@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { useSlides, useSlideDispatch } from '../core/store'
+import { useRoute } from '../core/route'
 import { MarkdownEditor } from '../components/MarkdownEditor'
 import { SlideFrame } from '../components/SlideFrame'
 import { SlideRenderer } from '../components/SlideRenderer'
@@ -24,10 +25,14 @@ const DEBOUNCE_MS = 300
 export function EditorView() {
   const { rawMarkdown, slides, currentIndex, currentDeck, deckMetadata } = useSlides()
   const dispatch = useSlideDispatch()
+  const [, setRoute] = useRoute()
   const [localMarkdown, setLocalMarkdown] = useState(rawMarkdown)
   const [showSaved, setShowSaved] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  // Capture the slide index when the editor first mounts, so we can scroll to it
+  const initialSlideIndexRef = useRef(currentIndex)
 
   // Persistence state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
@@ -67,6 +72,23 @@ export function EditorView() {
     },
     [dispatch, currentDeck]
   )
+
+  const handleCursorSlideChange = useCallback(
+    (slideIndex: number) => {
+      dispatch({ type: 'GO_TO_SLIDE', index: slideIndex })
+    },
+    [dispatch]
+  )
+
+  const handleEscape = useCallback(() => {
+    if (currentDeck) {
+      setRoute({
+        view: 'presentation',
+        deckId: currentDeck,
+        slideIndex: currentIndex,
+      })
+    }
+  }, [currentDeck, currentIndex, setRoute])
 
   const handleExport = useCallback(async () => {
     const success = await exportMarkdown(localMarkdown, deckMetadata?.title, currentDeck ?? undefined)
@@ -184,9 +206,23 @@ export function EditorView() {
                 Saved
               </span>
             )}
+            <button
+              className={styles.closeBtn}
+              onClick={handleEscape}
+              aria-label="Close editor"
+              title="Close editor (Esc)"
+            >
+              &times;
+            </button>
           </div>
           <div className={styles.editorWrapper}>
-            <MarkdownEditor value={localMarkdown} onChange={handleChange} />
+            <MarkdownEditor
+              value={localMarkdown}
+              onChange={handleChange}
+              initialSlideIndex={initialSlideIndexRef.current}
+              onCursorSlideChange={handleCursorSlideChange}
+              onEscape={handleEscape}
+            />
           </div>
         </div>
         <div className={styles.previewPane}>
