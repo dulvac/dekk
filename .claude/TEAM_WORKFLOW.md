@@ -27,6 +27,20 @@ Your ONLY responsibilities as team lead are:
 
 ## Agent Dispatch Rules
 
+**ALWAYS use team agents. NEVER spawn generic unnamed subagents.**
+
+When you need to delegate work, use the project's defined team agents (Rex, Ada, Sage, Turing, Eliza) — not anonymous `general-purpose` agents. Team agents carry domain expertise, review checklists, and behavioral constraints that produce higher-quality, more consistent results. A generic subagent doesn't know the brand colors, the CSS Modules convention, or the TDD requirement — a team agent does.
+
+- If work touches application code → dispatch **Rex**
+- If work needs architectural judgment → dispatch **Ada**
+- If work involves security concerns → dispatch **Sage**
+- If work requires testing or verification → dispatch **Turing**
+- If work involves AI tooling or project instrumentation → dispatch **Eliza**
+- For multi-domain tasks, dispatch **multiple team agents** (e.g., Rex to implement + Ada to review)
+- Only fall back to unnamed subagents for work completely outside all agents' domains (e.g., generic web research with no project context needed)
+
+This also applies to **issue swarm team leads**: when a team lead needs implementation done, it must dispatch Rex (not do it itself, and not spawn a generic agent).
+
 **ALWAYS delegate to specialists. NEVER do their work yourself:**
 
 - **Application code** (React components, TypeScript, CSS): **ALWAYS dispatch Rex**

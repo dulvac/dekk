@@ -116,3 +116,8 @@ This project uses a team of specialized agents. See `.claude/agents/` for their 
 See `.claude/TEAM_WORKFLOW.md` for full team delegation rules, dispatch guidelines, and anti-patterns.
 
 **Quick reference:** Team name is `dekk`. Spawn agents via `Task` tool with `team_name: "dekk"`. Team lead coordinates only — never implements.
+
+**Prefer team agents over generic subagents.** When spawning agents for any task in this project, use the defined team agents (Rex, Ada, Sage, Turing, Eliza) instead of unnamed `general-purpose` subagents. Each team agent has domain expertise, a review checklist, and constraints that produce better results than a generic agent. Map work to agents by domain:
+- Code changes → Rex | Architecture/review → Ada | Security → Sage | Testing/QA → Turing | AI tooling → Eliza
+- For tasks spanning multiple domains, spawn multiple team agents rather than one generic agent
+- Only use unnamed subagents for work that genuinely doesn't fit any team agent's specialty (e.g., pure research, web fetching)
