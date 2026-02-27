@@ -282,6 +282,147 @@ Born from the button contrast bug, Eliza created a reusable `/visual-qa` skill:
 
 ---
 
+<!-- bg: #1a1a2e -->
+<!-- layout: center -->
+
+## GitHub Issues: Closing the Loop
+
+The workflow evolved through three stages:
+
+1. **Manual requests** — "add feature X" described in chat
+2. **Team dispatch** — lead spawns specialists per task
+3. **Issue-driven automation** — `/issue-swarm` reads GitHub Issues, spawns parallel teams, opens PRs that auto-close issues on merge
+
+> Issues aren't just tracking — they're the **input format** for autonomous development.
+
+---
+
+## Issue-Driven Development
+
+Labels map directly to branch conventions — no human decides the branch name:
+
+```mermaid
+flowchart LR
+    I["Issue #7: Overview click bug"] -->|"label: bug"| B["fix/7-overview-slide-click-navigation"]
+    B --> PR["PR #13"]
+    PR -->|"Closes #7"| M[Merged to master]
+```
+
+**Real mapping from the swarm session:**
+
+| Issue | Label | Branch | PR |
+|-------|-------|--------|----|
+| #5 | `bug` | `fix/5-editor-mode-vertical-scroll` | #14 |
+| #6 | `bug` | `fix/6-green-text-contrast` | #10 |
+| #7 | `bug` | `fix/7-overview-slide-click-navigation` | #13 |
+| #8 | `bug` | `fix/8-cancel-export-button` | #12 |
+
+The **issue metadata drives the entire pipeline** — label determines prefix, number goes in the branch, PR body includes `Closes #N`.
+
+---
+
+## The Issue Swarm
+
+`/issue-swarm` dispatched **5 parallel team leads** — 4 bugs + 1 slides task — each in an isolated git worktree.
+
+```mermaid
+flowchart TD
+    CMD["/issue-swarm bug"] --> FETCH["4 open issues, all labeled bug"]
+    FETCH --> S1["Lead 1: Issue #5 (Editor bugs)"]
+    FETCH --> S2["Lead 2: Issue #6 (Contrast)"]
+    FETCH --> S3["Lead 3: Issue #7 (Overview nav)"]
+    FETCH --> S4["Lead 4: Issue #8 (Export cancel)"]
+    FETCH --> S5["Lead 5: Slides task"]
+
+    S1 --> W1["Worktree 1"] --> PR1["PR #14"]
+    S2 --> W2["Worktree 2"] --> PR2["PR #10"]
+    S3 --> W3["Worktree 3"] --> PR3["PR #13"]
+    S4 --> W4["Worktree 4"] --> PR4["PR #12"]
+    S5 --> W5["Worktree 5"] --> PR5["PR #11"]
+```
+
+:warning: **Plot twist:** Each team lead was instructed to delegate to sub-teams (Rex, Ada, Turing, Sage) — but **all 5 implemented solo** instead. A workflow compliance failure caught by Eliza during review.
+
+> Honest finding: even with clear rules, agents take shortcuts under parallel pressure.
+
+---
+
+## Swarm Results: The Four Bugs
+
+| Issue | Root Cause | Fix | Tests |
+|-------|-----------|-----|-------|
+| **#5** Editor bugs (5 sub-issues) | `overflow: hidden` on `.editorWrapper`, missing CM extensions | `overflow: auto`, `lineWrapping`, `findSlideOffset()`, preview sync listener, Escape keymap | +8 new, 266 total |
+| **#6** Green text contrast | #1C6331 on #2E3B30 = 1.6:1 ratio | Replaced 6 instances of `--mp-secondary` text with `--mp-primary` (gold, ~6.5:1 WCAG AA) | 258 pass |
+| **#7** Overview click always goes to slide 1 | `route.view` in useEffect deps caused `LOAD_DECK` to re-fire, resetting `currentIndex` | Changed dependency array to `[deckId]` only | +5 new, 263 total |
+| **#8** Export downloads even on Cancel | `saveMarkdownToFile()` returned boolean — both "cancelled" and "not available" were `false` | Discriminated union: `'saved' \| 'cancelled' \| 'not-available'` | +9 new, 267 total |
+
+**4 bugs. 5 PRs. 30+ new tests. Zero human code.**
+
+---
+
+## The Review Gauntlet
+
+After implementation, a **full 5-agent review** ran across all PRs:
+
+```mermaid
+flowchart LR
+    PR["5 PRs"] --> IR["Individual Reviews"]
+    IR --> Ada["Ada: Architecture"]
+    IR --> Rex["Rex: Frontend"]
+    IR --> Sage["Sage: Security"]
+    IR --> Turing["Turing: QA"]
+    IR --> Eliza["Eliza: AI Workflow"]
+
+    Ada -->|"All 5 approved, 1 MEDIUM"| V[Verdict]
+    Rex -->|"All 5 approved, 5 LOW"| V
+    Sage -->|"Zero vulnerabilities"| V
+    Turing -->|"4 approved, 1 BLOCKED"| V
+    Eliza -->|"Workflow compliance flag"| V
+```
+
+:rotating_light: **Turing caught 4 failing E2E tests** in PR #12 — `showSaveFilePicker` opens an OS dialog that Playwright cannot dismiss. PR blocked until fix applied.
+
+**Ada** flagged duplicated regex in PR #14. **Eliza** flagged the solo-implementation workflow violation and a stale `CLAUDE.md` reference.
+
+> ~20 agents total: 5 team leads + 5 individual reviewers + 5 team reviewers + orchestrator.
+
+---
+
+## From Issue to Merge: The Real Pipeline
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Swarm as /issue-swarm
+    participant Lead
+    participant Solo as Lead (solo)
+    participant Review as 5-Agent Review
+
+    User->>Swarm: /issue-swarm bug
+    Swarm->>Lead: Spawn 5 leads in worktrees
+    Lead->>Solo: Implement (should have delegated!)
+    Solo->>Solo: Write tests + fix + commit
+    Solo->>Swarm: PR with Closes #N
+
+    Swarm->>Review: Dispatch full team review
+    Review->>Review: Ada + Rex + Sage + Turing + Eliza
+    Review-->>Swarm: 4 approved, 1 blocked (E2E)
+
+    Note over Swarm: Turing catches E2E regression in PR #12
+    Swarm->>Solo: Fix E2E tests (parallel)
+```
+
+**Key metrics from this session:**
+
+- :white_check_mark: 4 bugs fixed simultaneously
+- :white_check_mark: 5 PRs created
+- :white_check_mark: 30+ new tests added
+- :white_check_mark: 0 security vulnerabilities (Sage)
+- :rotating_light: 1 E2E regression caught by Turing (fixed in parallel)
+- :warning: 5/5 team leads went solo — workflow compliance: **FAIL**
+
+---
+
 ## Key Takeaways
 
 > **Agents aren't just faster developers — they're a system that improves itself.**
@@ -292,6 +433,7 @@ Born from the button contrast bug, Eliza created a reusable `/visual-qa` skill:
 4. **Visual QA is not optional** — passing tests :noteq: correct UI
 5. **Problems become process** — every bug is a chance to create a skill
 6. **Parallel teams scale** — issue swarms tackle backlogs in minutes, not days
+7. **Report honestly** — every team lead went solo; that's a real finding, not a failure to hide
 
 ---
 
