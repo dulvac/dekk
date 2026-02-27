@@ -89,6 +89,41 @@ code quality. Complexity is a bug.
 
 ---
 
+## The `.claude` Directory
+
+The project's entire AI infrastructure lives in a single, version-controlled directory:
+
+```
+.claude/
+├── agents/                      # Specialist definitions
+│   ├── ada-architect.md         # Software Architect
+│   ├── rex-frontend.md          # Frontend Specialist
+│   ├── sage-security.md         # Security Specialist
+│   ├── turing-qa.md             # QA & Infrastructure
+│   └── eliza-ai-native.md      # AI-Native Tooling
+├── commands/                    # Slash commands (skills)
+│   ├── issue-swarm.md           # Parallel issue resolution
+│   ├── issue-list.md            # List GitHub issues
+│   ├── issue-create.md          # Create GitHub issues
+│   ├── issue-close.md           # Close GitHub issues
+│   ├── team-review.md           # Full team code review
+│   ├── visual-qa.md             # Visual quality audit
+│   ├── create-presentation.md   # Generate slide decks
+│   ├── implement-task.md        # Execute plan tasks
+│   └── review-docs.md           # Review design documents
+├── TEAM_WORKFLOW.md             # Delegation rules & anti-patterns
+└── settings.json                # Hooks & permission config
+```
+
+- **`agents/`** — Each file defines a specialist's personality, expertise, constraints, and review checklist. This is what makes agents *opinionated* rather than generic.
+- **`commands/`** — Reusable slash commands that encode multi-step workflows. `/issue-swarm` spawns parallel teams; `/visual-qa` runs a full UI audit.
+- **`TEAM_WORKFLOW.md`** — The rulebook: who dispatches whom, what anti-patterns to avoid, how teams coordinate.
+- **`settings.json`** — Hooks that enforce standards (e.g., block commits on `master`) and tool permissions.
+
+> Everything is **plain markdown and JSON** — no proprietary config format, no vendor lock-in. Check it into git and the whole team inherits the same AI workflow.
+
+---
+
 ## The Team Lead Pattern
 
 The team lead is a **conductor**, not a musician.
