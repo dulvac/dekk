@@ -27,5 +27,17 @@
       "Bash(git push*)",
       "Bash(git worktree*)"
     ]
-  }
+  },
+  "PreToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash .claude/hooks/block-master-commit.sh",
+          "timeout": 5
+        }
+      ]
+    }
+  ]
 }

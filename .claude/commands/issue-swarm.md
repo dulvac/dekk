@@ -100,6 +100,11 @@ Analyze the issue to understand scope and the right fix.
 
    Closes #{number}
 
+   ## Before / After
+   {If this PR changes CSS, layout, or fixes a visual bug, include before/after screenshots here.
+   Capture "before" BEFORE making changes. Capture "after" AFTER making changes.
+   Delete this section only if the PR has zero visual impact.}
+
    ## Test plan
    - [ ] Unit tests pass
    - [ ] Build succeeds
@@ -115,6 +120,7 @@ Analyze the issue to understand scope and the right fix.
 - Follow conventional commits for all commit messages
 - Do NOT modify files unrelated to this issue
 - Read `CLAUDE.md` before starting — it has the coding standards, brand colors, and architecture
+- **Visual PRs MUST include before/after screenshots.** If your changes touch CSS files, visual layout, or fix a visual bug: capture a "before" screenshot BEFORE making changes, and an "after" screenshot AFTER. Add both to the PR body. PRs without screenshots for visual changes will be rejected during review.
 ```
 
 ## Phase 4 — Monitor & Collect

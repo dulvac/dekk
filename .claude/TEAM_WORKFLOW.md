@@ -93,6 +93,19 @@ These mistakes have happened before. Learn from them:
    - Include: files modified, tests passing/failing, next step in the plan
    - The new agent picks up where the previous one left off, maintaining code style consistency
 
+7. **Creating visual-fix PRs without before/after screenshots**
+   - WRONG: Fix a CSS/layout bug, create PR with only a text description, then scramble to add screenshots after the fact
+   - RIGHT: Capture a "before" screenshot BEFORE making any code changes. Implement the fix. Capture an "after" screenshot. Include both in the PR body under `## Before / After`
+   - This applies to ANY PR that touches `.css` files, fixes a visual bug, or changes UI layout
+   - The screenshot workflow is: before-screenshot first, code changes second, after-screenshot third, PR creation last
+   - Real incident (PR #28): PR was created without screenshots, violating CLAUDE.md. When adding screenshots after the fact, the lead accidentally committed to master instead of the fix branch, requiring a revert
+
+8. **Committing to the wrong branch**
+   - WRONG: Run `git commit` without verifying the current branch
+   - RIGHT: Always run `git branch --show-current` before committing, especially after switching context between tasks
+   - A PreToolUse hook blocks commits on master/main, but verify your branch regardless
+   - Real incident (PR #28): Screenshots were committed directly to master instead of the fix branch, requiring `git revert` to undo
+
 ## Autonomous Fix Policy
 
 Act independently. Do not wait for user approval to dispatch fixes.
