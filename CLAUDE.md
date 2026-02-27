@@ -36,7 +36,7 @@ Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are 
 
 ## Git Workflow
 
-- **Never commit directly to master.** All work must be on a branch.
+- **Never commit directly to master.** All work must be on a branch. A PreToolUse hook in `.claude/settings.json` enforces this by blocking `git commit` on master/main.
 - **Branch naming:** Include the GitHub issue number when working on a tracked issue:
   - `feature/<issue#>-<short-desc>` — new features (e.g., `feature/15-export-pdf`)
   - `fix/<issue#>-<short-desc>` — bug fixes (e.g., `fix/42-button-contrast`)
@@ -83,7 +83,11 @@ Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are 
   - Screenshots should be taken during E2E testing to verify visual correctness
   - Rex must visually verify all UI changes before declaring work complete
   - Turing must include visual inspection as part of E2E verification
-- **PR Screenshots**: PRs that fix visual bugs or change visual aspects MUST include before/after screenshots in the PR body. Capture the relevant area before starting work and after completing it.
+- **PR Screenshots (MANDATORY for visual changes)**:
+  - Any PR that touches `.css` files, fixes a visual bug, or changes UI layout MUST include before/after screenshots
+  - **Workflow:** Capture "before" screenshot BEFORE making any code changes. Capture "after" screenshot AFTER changes are complete. Include both in the PR body under a `## Before / After` section
+  - PRs missing screenshots for visual changes will be rejected during review
+  - When in doubt about whether a change is "visual," include screenshots anyway
 - **GFM Feature Requirement**: When "GFM support" (GitHub Flavored Markdown) is listed as a feature:
   - ALL GFM elements must have branded styling, not just parsing support
   - Tables, strikethrough, task lists, autolinks must be visually styled

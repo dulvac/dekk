@@ -600,14 +600,72 @@ A 5th PR was also created for presentation slides content.
 
 ---
 
+## 2026-02-27 — PR Process Failure & Instrumentation Hardening (Entry #10)
+
+**What happened:** PR #28 (fix for issue #27, overview grid slide overlap) exposed two process failures: the PR was created without before/after screenshots (violating CLAUDE.md), and when the lead tried to retroactively add screenshots, they accidentally committed to master (violating the "never commit to master" rule). This prompted an instrumentation review to prevent this class of failure from recurring.
+
+**Agent involved:** Eliza (AI-native specialist)
+
+**The incident (timeline):**
+1. Team lead fixed the overview grid overlap bug on branch `fix/27-overview-grid-overlap`
+2. PR #28 was created with a text-only description -- no before/after screenshots
+3. User pointed out the CLAUDE.md violation: "PRs that fix visual bugs MUST include before/after screenshots"
+4. Team lead tried to add screenshots but accidentally committed to master instead of the fix branch
+5. Team lead had to `git revert` the master commit (commit `6216a9e` reverted by `41e2946`)
+6. Screenshots were then correctly added to the fix branch
+
+**Root cause analysis:**
+
+1. **Screenshot rule was buried and passive.** The requirement was a single sub-bullet under "Quality Standards" in CLAUDE.md (line 86). Agents scanning CLAUDE.md for PR creation guidance would hit the "Git Workflow" section and the "PR linking" rule (`Closes #N`), but the screenshot rule lived in a different section entirely. No agent workflow actively surfaced this rule at PR creation time.
+
+2. **Issue swarm PR template had no screenshot field.** The `/issue-swarm` command's PR body template included `## Summary`, `Closes #N`, and `## Test plan` -- but no `## Before / After` section. An agent following the template would never encounter the screenshot requirement.
+
+3. **No automated guard against master commits.** The "never commit to master" rule was behavioral guidance only. When the lead was in a hurry to fix the screenshot omission, they committed to master without checking their branch. There was no hook to catch this.
+
+4. **Screenshot timing problem.** The CLAUDE.md rule said "capture the relevant area before starting work" but the lead had already completed the fix. Retroactive screenshot capture is error-prone and creates pressure to rush (which led to the wrong-branch commit).
+
+**Changes made (5 files):**
+
+1. **`.claude/settings.json`** -- Added `PreToolUse` hook that blocks `git commit` on master/main branches. The hook script at `.claude/hooks/block-master-commit.sh` reads the bash command from stdin, checks if it's a git commit, and if the current branch is master/main, exits with code 2 (block) and a clear error message. This is the automated guard that was missing.
+
+2. **`CLAUDE.md`** -- Strengthened the PR Screenshots rule from a single bullet to a structured sub-section with explicit workflow steps (before screenshot -> code changes -> after screenshot -> PR creation). Added note about the master-commit hook to the Git Workflow section so agents know the guard exists.
+
+3. **`.claude/commands/issue-swarm.md`** -- Added `## Before / After` section to the PR body template. Added a new Important Rule: "Visual PRs MUST include before/after screenshots." This ensures swarm-created PRs get the screenshot prompt even when agents don't read the full CLAUDE.md Quality Standards section.
+
+4. **`.claude/TEAM_WORKFLOW.md`** -- Added anti-patterns #7 (creating visual-fix PRs without screenshots) and #8 (committing to the wrong branch). Both reference the real PR #28 incident so future agents see the concrete consequence of the mistake.
+
+5. **`.claude/hooks/block-master-commit.sh`** -- NEW: The hook script that implements the master branch guard.
+
+**Design decisions:**
+
+- **Hook over prompt-based guard:** A command hook (exit code 2 = block) is deterministic and un-bypassable. A prompt-based hook would depend on an LLM judgment call, which could fail under the same time pressure that caused the original incident.
+
+- **Minimal hook scope:** The hook only checks `git commit` commands, not all git operations. Branch switching, pushing, and other git operations are not affected. This prevents false positives while catching the specific failure mode.
+
+- **Template-level enforcement over rule-level enforcement:** Adding the screenshot section directly to the PR template is more effective than relying on agents to remember a rule from a different file. Agents follow templates literally; they sometimes skim rules.
+
+- **Anti-patterns with real incidents:** Documenting the PR #28 incident by number in the anti-patterns makes it concrete. Abstract rules ("don't commit to master") are weaker than "this happened on PR #28 and required a revert."
+
+**What this does NOT fix:**
+
+- The actual overlap bug fix itself (that's a separate code concern, not an instrumentation concern)
+- Non-swarm PR creation still relies on the agent reading CLAUDE.md (no `/create-pr` command was added to avoid over-engineering)
+- The hook runs locally and depends on `jq` being available (standard on macOS, may need installation on CI runners)
+
+**Outcome:** Four specific instrumentation gaps closed: (1) master branch commits are now blocked by a hook, (2) the screenshot rule in CLAUDE.md is prominent and includes a concrete workflow, (3) the swarm PR template includes a screenshot section, (4) two new anti-patterns document the real incident for future agents to learn from.
+
+---
+
 ## AI-Native Project Structure
 
 ```
 dekk/
 ├── CLAUDE.md                          # Project context for AI agents (~85 lines)
 ├── .claude/
-│   ├── settings.json                  # Permissions (incl. Playwright, tsc)
-│   ├── TEAM_WORKFLOW.md               # Team delegation rules & anti-patterns
+│   ├── settings.json                  # Permissions + PreToolUse hooks
+│   ├── TEAM_WORKFLOW.md               # Team delegation rules & anti-patterns (8 anti-patterns)
+│   ├── hooks/
+│   │   └── block-master-commit.sh     # Prevents git commit on master/main
 │   ├── agents/
 │   │   ├── ada-architect.md           # Architecture & clean code
 │   │   ├── rex-frontend.md            # React & frontend
