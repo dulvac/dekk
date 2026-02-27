@@ -452,13 +452,13 @@ The system works — but it still needs a human to type `/issue-swarm`.
 
 ```mermaid
 flowchart LR
-    I["GitHub Issue\n(opened or labeled)"] -->|"auto-fix label"| GH["GitHub Actions"]
-    GH -->|"triggers"| CC["Claude Code Action"]
-    CC -->|"reads"| CM["CLAUDE.md\n+ .claude/agents/"]
-    CC -->|"creates"| BR["Branch + Implementation"]
-    BR -->|"opens"| PR["Pull Request\nCloses #N"]
-    PR -->|"triggers"| RV["Automated Review\n(5 agent perspectives)"]
-    RV -->|"human approves"| MG["Merge to master"]
+    I[GitHub Issue] -->|"auto-fix label"| GH[GitHub Actions]
+    GH -->|"triggers"| CC[Claude Code Action]
+    CC -->|"reads"| CM[CLAUDE.md + agents]
+    CC -->|"creates"| BR[Branch + Code]
+    BR -->|"opens"| PR[Pull Request]
+    PR -->|"triggers"| RV[5-Agent Review]
+    RV -->|"human approves"| MG[Merge]
 ```
 
 **Issues become the input format. PRs become the output. Humans only review and merge.**
@@ -495,7 +495,7 @@ flowchart TD
         C2 -->|"implement + review"| P2[PR Ready for Merge]
     end
 
-    Today -.->|"same agent team,\nsame standards,\nno human trigger"| Tomorrow
+    Today -.->|"same team, no human trigger"| Tomorrow
 ```
 
 > The difference is one label instead of one command. The agent team, the standards, and the review process stay the same.
