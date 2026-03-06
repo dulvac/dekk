@@ -138,6 +138,33 @@ describe('useKeyboardNavigation', () => {
     expect(setRoute).toHaveBeenCalledWith({ view: 'presentation', deckId: 'test', slideIndex: 0 })
   })
 
+  it('navigates to picker on h key', () => {
+    const route: Route = { view: 'presentation', deckId: 'test', slideIndex: 0 }
+    renderHook(() => useKeyboardNavigation(route, 5, dispatch, setRoute))
+
+    fireKey('h')
+
+    expect(setRoute).toHaveBeenCalledWith({ view: 'picker' })
+  })
+
+  it('navigates to picker from overview on h key', () => {
+    const route: Route = { view: 'overview', deckId: 'test' }
+    renderHook(() => useKeyboardNavigation(route, 5, dispatch, setRoute))
+
+    fireKey('h')
+
+    expect(setRoute).toHaveBeenCalledWith({ view: 'picker' })
+  })
+
+  it('does not navigate home from picker view on h key', () => {
+    const route: Route = { view: 'picker' }
+    renderHook(() => useKeyboardNavigation(route, 0, dispatch, setRoute))
+
+    fireKey('h')
+
+    expect(setRoute).not.toHaveBeenCalled()
+  })
+
   it('does not dispatch slide navigation actions from picker view', () => {
     const route: Route = { view: 'picker' }
     renderHook(() => useKeyboardNavigation(route, 0, dispatch, setRoute))

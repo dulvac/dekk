@@ -70,6 +70,10 @@ export function useKeyboardNavigation(
       goToSlide: (index: number) => {
         dispatch({ type: 'GO_TO_SLIDE', index })
       },
+      goHome: () => {
+        if (route.view === 'picker') return
+        setRoute({ view: 'picker' })
+      },
     })
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
