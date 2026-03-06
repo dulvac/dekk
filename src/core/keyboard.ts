@@ -8,6 +8,7 @@ export interface KeyboardActions {
   toggleEditor: () => void
   escape: () => void
   goToSlide: (index: number) => void
+  goHome: () => void
 }
 
 export function createKeyboardHandler(actions: KeyboardActions) {
@@ -59,6 +60,10 @@ export function createKeyboardHandler(actions: KeyboardActions) {
       case 'e':
         e.preventDefault()
         actions.toggleEditor()
+        break
+      case 'h':
+        e.preventDefault()
+        actions.goHome()
         break
       case 'Escape':
         actions.escape()
