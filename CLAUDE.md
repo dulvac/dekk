@@ -30,31 +30,21 @@ Dekk is a static single-page web application for presenting markdown-authored sl
 
 Four views: PickerView (`/#/`), PresentationView (`/#deck/{id}/{n}`), EditorView (`/#deck/{id}/editor`), OverviewGrid (`/#deck/{id}/overview`). Deck-scoped hash routing via `useRoute` hook. Presentations live in `presentations/*/slides.md` and are discovered at build time via Vite's `import.meta.glob`. State flows through React Context with `LOAD_DECK`/`UNLOAD_DECK` actions. Editor persistence detects environment (dev server → file write, GitHub Pages → GitHub API PR, unknown → download fallback).
 
-## Git Worktrees
-
-Worktree directory: `.worktrees/` (project-local, hidden). Feature branches are created as worktrees under this directory (e.g., `.worktrees/feature-name`).
-
 ## Git Workflow
 
-- **Never commit directly to master.** All work must be on a branch. A PreToolUse hook in `.claude/settings.json` enforces this by blocking `git commit` on master/main.
-- **Branch naming:** Include the GitHub issue number when working on a tracked issue:
-  - `feature/<issue#>-<short-desc>` — new features (e.g., `feature/15-export-pdf`)
-  - `fix/<issue#>-<short-desc>` — bug fixes (e.g., `fix/42-button-contrast`)
-  - `docs/<issue#>-<short-desc>` — documentation (e.g., `docs/7-update-readme`)
-  - Without an issue: `feature/<short-desc>` or `fix/<short-desc>` (unchanged)
+See [DEVELOPMENT.md](DEVELOPMENT.md) for full conventions (commits, branches, worktrees, GitHub CLI).
+
+**Project-specific additions:**
+
+- **Never commit directly to master.** A PreToolUse hook in `.claude/settings.json` enforces this by blocking `git commit` on master/main.
+- **Branch naming with issue numbers:** When working on a tracked issue, include the number:
+  - `feature/<issue#>-<short-desc>` (e.g., `feature/15-export-pdf`)
+  - `fix/<issue#>-<short-desc>` (e.g., `fix/42-button-contrast`)
+  - `docs/<issue#>-<short-desc>` (e.g., `docs/7-update-readme`)
 - **PR linking:** PR body MUST include `Closes #<issue-number>` to auto-close the issue on merge.
-- **Conventional Commits:** All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) spec:
-  - `feat: add export to PDF` — new feature
-  - `fix: correct button contrast ratio` — bug fix
-  - `refactor: extract keyboard hooks from App.tsx` — code restructuring
-  - `docs: update color scheme design doc` — documentation only
-  - `test: add MermaidDiagram unit tests` — tests only
-  - `chore: update dependencies` — maintenance
-  - `style: fix CSS formatting` — formatting, no logic change
-  - `perf: lazy-load Shiki highlighter` — performance improvement
-  - Scope is optional: `feat(editor): add save shortcut`
-  - Breaking changes: `feat!: change slide metadata format` or add `BREAKING CHANGE:` footer
-- **Create a PR** to merge back into master when work is complete.
+- **Additional commit types** beyond DEVELOPMENT.md: `style`, `perf`
+- **Scope** is optional: `feat(editor): add save shortcut`
+- **Breaking changes:** `feat!: change slide metadata format` or add `BREAKING CHANGE:` footer
 
 ## Issue Management
 
@@ -125,5 +115,3 @@ See `.claude/TEAM_WORKFLOW.md` for full team delegation rules, dispatch guidelin
 - Code changes → Rex | Architecture/review → Ada | Security → Sage | Testing/QA → Turing | AI tooling → Eliza
 - For tasks spanning multiple domains, spawn multiple team agents rather than one generic agent
 - Only use unnamed subagents for work that genuinely doesn't fit any team agent's specialty (e.g., pure research, web fetching)
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for git workflow, branching, and commit conventions.
