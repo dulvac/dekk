@@ -173,6 +173,10 @@
   background-color: var(--mp-bg);
 }
 
+.cursorHidden {
+  cursor: none;
+}
+
 .slideTransition {
   transition: opacity var(--mp-transition-duration) var(--mp-transition-ease),
               transform var(--mp-transition-duration) var(--mp-transition-ease);
