@@ -62,6 +62,18 @@ This also applies to **issue swarm team leads**: when a team lead needs implemen
 - **AI instrumentation** (CLAUDE.md, agents, skills, hooks): **ALWAYS dispatch Eliza**
   - Agent definitions, custom commands, AI journal updates
 
+## Pre-Commit Quality Gate
+
+**Every agent MUST run these checks before declaring work complete, committing, or opening a PR:**
+
+```bash
+npm run lint        # Catch unused imports, type errors, style violations
+npm run test:run    # Verify functional correctness
+npm run build       # Confirm production build succeeds
+```
+
+Lint errors are NOT caught by tests. Running tests alone is insufficient. If any check fails, fix the issue before committing.
+
 ## Anti-Patterns (DO NOT DO THIS)
 
 These mistakes have happened before. Learn from them:
@@ -105,6 +117,12 @@ These mistakes have happened before. Learn from them:
    - RIGHT: Always run `git branch --show-current` before committing, especially after switching context between tasks
    - A PreToolUse hook blocks commits on master/main, but verify your branch regardless
    - Real incident (PR #28): Screenshots were committed directly to master instead of the fix branch, requiring `git revert` to undo
+
+9. **Skipping linting before commits or PRs**
+   - WRONG: Run tests, see them pass, commit and open a PR without running the linter
+   - RIGHT: Run `npm run lint` before committing. Fix any lint errors before pushing or opening a PR
+   - Lint checks catch unused imports, type errors, and style violations that tests do not
+   - Real incident: A PR shipped with an unused `vi` import in a test file. Tests passed but CI lint failed. Running `npm run lint` locally would have caught it instantly
 
 ## Autonomous Fix Policy
 
@@ -170,8 +188,9 @@ sequenceDiagram
 After an agent completes their task:
 1. **Review** their output for completeness and quality
 2. **If changes needed**: Dispatch back to the same agent or another specialist
-3. **If approved**: Create a git commit with clear description
-4. **Then**: Move to next task or report completion to user
+3. **Verify lint**: Run `npm run lint` before committing — agents must fix any lint errors before work is considered complete
+4. **If approved**: Create a git commit with clear description
+5. **Then**: Move to next task or report completion to user
 
 Remember: You are a conductor, not a musician. Let the specialists play their instruments.
 
@@ -229,6 +248,6 @@ Across two full swarm executions, every team lead chose to implement solo rather
 Each issue agent works autonomously in its worktree:
 - Read `CLAUDE.md` for project standards
 - Implement the fix/feature following TDD, CSS Modules, conventional commits
-- Run tests (`npm run test:run`) and build (`npm run build`)
+- Run tests (`npm run test:run`), lint (`npm run lint`), and build (`npm run build`)
 - Commit with conventional commit message
 - Push branch and create PR with `Closes #{issue-number}`

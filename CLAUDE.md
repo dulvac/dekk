@@ -63,6 +63,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for full conventions (commits, branches, wo
 - No external state management libraries
 - Prefer named exports
 - No light mode - dark theme is the brand identity
+- Run `npm run lint` before every commit — lint errors must be fixed before pushing or opening PRs
 
 ## Quality Standards
 
