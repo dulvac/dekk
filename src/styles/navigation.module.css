@@ -53,3 +53,44 @@
   opacity: 0.3;
   cursor: default;
 }
+
+/* NavigationControls layout */
+.controls {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 200ms var(--mp-transition-ease);
+}
+
+.controls.visible {
+  pointer-events: auto;
+}
+
+.controls.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arrowLeft,
+.arrowRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  min-width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+.arrowLeft { left: 16px; }
+.arrowRight { right: 16px; }
+
+.toolbar {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
