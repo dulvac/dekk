@@ -26,7 +26,7 @@ Examples:
 
 ## Branch Naming
 
-All feature and fix work must happen on branches, never directly on `master`.
+All feature and fix work must happen on branches, never directly on `main`.
 
 | Branch type | Pattern                  | Example                        |
 |-------------|--------------------------|--------------------------------|
@@ -37,17 +37,17 @@ Use lowercase, hyphen-separated descriptions. Keep them short but descriptive.
 
 ## Branching Model
 
-- The default branch is `master`. All pull requests target `master`.
-- Create feature/fix branches from the latest `master`:
+- The default branch is `main`. All pull requests target `main`.
+- Create feature/fix branches from the latest `main`:
   ```bash
-  git checkout master
-  git pull origin master
+  git checkout main
+  git pull origin main
   git checkout -b feat/<description>
   ```
 - Push and open a PR when ready:
   ```bash
   git push -u origin feat/<description>
-  gh pr create --base master
+  gh pr create --base main
   ```
 
 ## Git Worktrees (for Claude sessions)
@@ -57,10 +57,10 @@ When working in Claude Code sessions, use git worktrees to isolate work without 
 ### Create a worktree
 
 ```bash
-git worktree add .claude/worktrees/<name> -b <branch-name> master
+git worktree add .claude/worktrees/<name> -b <branch-name> main
 ```
 
-This creates an isolated working copy with its own branch based on `master`.
+This creates an isolated working copy with its own branch based on `main`.
 
 ### Clean up when done
 
@@ -70,7 +70,7 @@ git worktree remove .claude/worktrees/<name>
 
 ### Rules
 
-- Always branch worktrees from `master`.
+- Always branch worktrees from `main`.
 - Name the worktree after the feature or fix (e.g., `.claude/worktrees/user-profile`).
 - Commit, push, and open PRs from the worktree branch, then clean up.
 
@@ -93,7 +93,7 @@ gh auth switch
 ### Create a pull request
 
 ```bash
-gh pr create --base master --title "feat: description" --body "Summary of changes"
+gh pr create --base main --title "feat: description" --body "Summary of changes"
 ```
 
 ### Check PR status

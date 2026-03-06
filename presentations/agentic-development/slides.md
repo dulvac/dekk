@@ -118,7 +118,7 @@ The project's entire AI infrastructure lives in a single, version-controlled dir
 - **`agents/`** — Each file defines a specialist's personality, expertise, constraints, and review checklist. This is what makes agents *opinionated* rather than generic.
 - **`commands/`** — Reusable slash commands that encode multi-step workflows. `/issue-swarm` spawns parallel teams; `/visual-qa` runs a full UI audit.
 - **`TEAM_WORKFLOW.md`** — The rulebook: who dispatches whom, what anti-patterns to avoid, how teams coordinate.
-- **`settings.json`** — Hooks that enforce standards (e.g., block commits on `master`) and tool permissions.
+- **`settings.json`** — Hooks that enforce standards (e.g., block commits on `main`) and tool permissions.
 
 > Everything is **plain markdown and JSON** — no proprietary config format, no vendor lock-in. Check it into git and the whole team inherits the same AI workflow.
 
@@ -340,7 +340,7 @@ Labels map directly to branch conventions — no human decides the branch name:
 flowchart LR
     I["Issue #7: Overview click bug"] -->|"label: bug"| B["fix/7-overview-slide-click-navigation"]
     B --> PR["PR #13"]
-    PR -->|"Closes #7"| M[Merged to master]
+    PR -->|"Closes #7"| M[Merged to main]
 ```
 
 **Real mapping from the swarm session:**

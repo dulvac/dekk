@@ -36,7 +36,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for full conventions (commits, branches, wo
 
 **Project-specific additions:**
 
-- **Never commit directly to master.** A PreToolUse hook in `.claude/settings.json` enforces this by blocking `git commit` on master/main.
+- **Never commit directly to main.** A PreToolUse hook in `.claude/settings.json` enforces this by blocking `git commit` on main.
 - **Branch naming with issue numbers:** When working on a tracked issue, include the number:
   - `feature/<issue#>-<short-desc>` (e.g., `feature/15-export-pdf`)
   - `fix/<issue#>-<short-desc>` (e.g., `fix/42-button-contrast`)

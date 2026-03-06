@@ -215,7 +215,7 @@ Orchestrator                                Orchestrator
 4. **Phase 2 — Review**: After all PRs are created, dispatch reviewers (Ada, Rex, Sage, Turing, Eliza) against each PR. Reviewers post findings directly on the GitHub PRs.
 5. **Fix review findings**: If reviewers flag issues, dispatch fix agents against the affected PRs.
 6. **Merge**: Once reviews pass, merge all PRs sequentially.
-7. **Verify**: Pull master, run full test suite + build to confirm integration.
+7. **Verify**: Pull main, run full test suite + build to confirm integration.
 8. **Log everything** per Communication Logging Protocol
 
 ### Why Solo + Review (Not Sub-Teams)
