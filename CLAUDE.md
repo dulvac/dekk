@@ -125,3 +125,5 @@ See `.claude/TEAM_WORKFLOW.md` for full team delegation rules, dispatch guidelin
 - Code changes → Rex | Architecture/review → Ada | Security → Sage | Testing/QA → Turing | AI tooling → Eliza
 - For tasks spanning multiple domains, spawn multiple team agents rather than one generic agent
 - Only use unnamed subagents for work that genuinely doesn't fit any team agent's specialty (e.g., pure research, web fetching)
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for git workflow, branching, and commit conventions.
