@@ -1,24 +1,28 @@
 import { useSlides } from '../core/store'
+import type { Route } from '../core/route'
 import { SlideFrame } from '../components/SlideFrame'
 import { SlideRenderer } from '../components/SlideRenderer'
 import { SlideNavigation } from '../components/SlideNavigation'
+import { NavigationControls } from '../components/NavigationControls'
+import { useAutoHide } from '../hooks'
 import styles from '../styles/slides.module.css'
 
-// Validate CSS color value to prevent injection attacks
 function isValidCSSColor(color: string | undefined): boolean {
   if (!color) return false
-
-  // Reject dangerous patterns
   const dangerous = /javascript:|url\(|expression\(/i
   if (dangerous.test(color)) return false
-
-  // Accept valid CSS color formats
   const validColor = /^(#[0-9a-f]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z]+)$/i
   return validColor.test(color)
 }
 
-export function PresentationView() {
+interface PresentationViewProps {
+  route: Route
+  setRoute: (route: Route) => void
+}
+
+export function PresentationView({ route, setRoute }: PresentationViewProps) {
   const { slides, currentIndex } = useSlides()
+  const { visible, containerProps, controlProps } = useAutoHide()
 
   if (slides.length === 0) {
     return (
@@ -31,8 +35,6 @@ export function PresentationView() {
   }
 
   const currentSlide = slides[currentIndex]
-
-  // Guard against out-of-bounds access
   if (!currentSlide) {
     return (
       <div className={styles.presentationView}>
@@ -43,23 +45,46 @@ export function PresentationView() {
     )
   }
 
-  // Validate background color before applying
   const bgColor = currentSlide.metadata.bg
   const backgroundColor = isValidCSSColor(bgColor) ? bgColor : undefined
 
   return (
-    <div className={styles.presentationView}>
-      <SlideFrame
-        className={styles.slideTransition}
-        style={{
-          backgroundColor,
-        }}
-      >
+    <div
+      className={`${styles.presentationView} ${visible ? '' : styles.cursorHidden}`}
+      {...containerProps}
+    >
+      <SlideFrame className={styles.slideTransition} style={{ backgroundColor }}>
         <SlideRenderer slide={currentSlide} />
       </SlideFrame>
-      <SlideNavigation
-        currentIndex={currentIndex}
-        totalSlides={slides.length}
+      <SlideNavigation currentIndex={currentIndex} totalSlides={slides.length} />
+      <NavigationControls
+        visible={visible}
+        onOverview={() => {
+          if ('deckId' in route) {
+            setRoute({ view: 'overview', deckId: route.deckId })
+          }
+        }}
+        onEditor={() => {
+          if ('deckId' in route) {
+            setRoute({ view: 'editor', deckId: route.deckId })
+          }
+        }}
+        onFullscreen={() => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen()
+          } else {
+            document.exitFullscreen()
+          }
+        }}
+        onEscape={() => {
+          if (document.fullscreenElement) {
+            document.exitFullscreen()
+          }
+        }}
+        onHome={() => setRoute({ view: 'picker' })}
+        isFirst={currentIndex === 0}
+        isLast={currentIndex === slides.length - 1}
+        controlProps={controlProps}
       />
     </div>
   )

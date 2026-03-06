@@ -51,7 +51,7 @@ export default function App() {
             {route.view === 'picker' && (
               <PickerView entries={deckRegistry} onSelectDeck={handleSelectDeck} />
             )}
-            {route.view === 'presentation' && <PresentationView />}
+            {route.view === 'presentation' && <PresentationView route={route} setRoute={setRoute} />}
             {route.view === 'editor' && <EditorView />}
             {route.view === 'overview' && (
               <OverviewGrid onSelectSlide={handleSelectSlide} />
