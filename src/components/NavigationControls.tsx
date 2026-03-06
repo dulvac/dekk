@@ -37,14 +37,14 @@ export function NavigationControls({
       onMouseLeave={controlProps.onMouseLeave}
     >
       <KeycapButton
-        label="\u2190"
+        label={"\u2190"}
         onClick={() => dispatch({ type: 'PREV_SLIDE' })}
         ariaLabel="Previous slide (Left arrow key)"
         disabled={isFirst}
         className={styles.arrowLeft}
       />
       <KeycapButton
-        label="\u2192"
+        label={"\u2192"}
         onClick={() => dispatch({ type: 'NEXT_SLIDE' })}
         ariaLabel="Next slide (Right arrow key)"
         disabled={isLast}
