@@ -177,3 +177,96 @@ test.describe('Dekk E2E', () => {
     expect(count).toBeGreaterThanOrEqual(4)
   })
 })
+
+test.describe('Navigation Controls', () => {
+  test('controls appear on mouse move and disappear after timeout', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+
+    // The controls container uses opacity for show/hide.
+    // Playwright's toBeHidden does not detect parent opacity:0, so we assert CSS directly.
+    const controlsContainer = page.locator('[class*="controls"][class*="hidden"], [class*="controls"][class*="visible"]').first()
+
+    // Initially controls should be hidden (opacity: 0)
+    await expect(controlsContainer).toHaveCSS('opacity', '0')
+
+    // Trigger a single mousemove event via JS to show controls without any Playwright mouse positioning
+    await page.evaluate(() => {
+      document.querySelector('[class*="presentationView"]')?.dispatchEvent(
+        new MouseEvent('mousemove', { bubbles: true, clientX: 500, clientY: 100 })
+      )
+    })
+    await expect(controlsContainer).toHaveCSS('opacity', '1', { timeout: 3000 })
+
+    // After 3s auto-hide timeout + 200ms CSS transition, controls should hide again
+    await expect(controlsContainer).toHaveCSS('opacity', '0', { timeout: 5000 })
+  })
+
+  test('clicking next arrow advances slide', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/1 \/ \d+/)).toBeVisible()
+
+    await page.mouse.move(400, 300)
+    const nextBtn = page.getByRole('button', { name: /next slide/i })
+    await expect(nextBtn).toBeVisible()
+
+    await nextBtn.click()
+    await expect(page.getByText(/2 \/ \d+/)).toBeVisible()
+  })
+
+  test('clicking prev arrow goes back', async ({ page }) => {
+    // Navigate to slide 0, then advance to slide 1 (deep-link resets to 0)
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/1 \/ \d+/)).toBeVisible()
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByText(/2 \/ \d+/)).toBeVisible()
+
+    await page.mouse.move(400, 300)
+    const prevBtn = page.getByRole('button', { name: /previous slide/i })
+    await prevBtn.click()
+    await expect(page.getByText(/1 \/ \d+/)).toBeVisible()
+  })
+
+  test('clicking O button switches to overview', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+
+    await page.mouse.move(400, 300)
+    await page.getByRole('button', { name: /overview/i }).click()
+    await expect(page).toHaveURL(/#deck\/default\/overview/)
+  })
+
+  test('clicking E button switches to editor', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+
+    await page.mouse.move(400, 300)
+    await page.getByRole('button', { name: /editor/i }).click()
+    await expect(page).toHaveURL(/#deck\/default\/editor/)
+  })
+
+  test('clicking H button goes to picker', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+
+    await page.mouse.move(400, 300)
+    await page.getByRole('button', { name: /deck picker/i }).click()
+    await expect(page.getByRole('heading', { name: 'dekk' })).toBeVisible()
+  })
+
+  test('H key navigates to picker', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await expect(page.getByText(/\d+ \/ \d+/)).toBeVisible()
+
+    await page.keyboard.press('h')
+    await expect(page.getByRole('heading', { name: 'dekk' })).toBeVisible()
+  })
+
+  test('prev button disabled on first slide', async ({ page }) => {
+    await page.goto('./#deck/default/0')
+    await page.mouse.move(400, 300)
+
+    const prevBtn = page.getByRole('button', { name: /previous slide/i })
+    await expect(prevBtn).toBeDisabled()
+  })
+})
