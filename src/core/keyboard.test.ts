@@ -12,6 +12,7 @@ function makeActions(): KeyboardActions {
     toggleEditor: vi.fn(),
     escape: vi.fn(),
     goToSlide: vi.fn(),
+    goHome: vi.fn(),
   }
 }
 
@@ -110,6 +111,13 @@ describe('createKeyboardHandler', () => {
     const handler = createKeyboardHandler(actions)
     handler(fireKey('e'))
     expect(actions.toggleEditor).toHaveBeenCalled()
+  })
+
+  it('calls goHome on h', () => {
+    const actions = makeActions()
+    const handler = createKeyboardHandler(actions)
+    handler(fireKey('h'))
+    expect(actions.goHome).toHaveBeenCalled()
   })
 
   it('calls escape on Escape', () => {

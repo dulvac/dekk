@@ -1,0 +1,96 @@
+/* Keycap button base */
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 12px;
+  background: rgba(50, 45, 43, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(138, 125, 90, 0.25);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  color: var(--mp-muted);
+  font-family: var(--mp-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--mp-transition-duration) var(--mp-transition-ease),
+    border-color var(--mp-transition-duration) var(--mp-transition-ease),
+    box-shadow var(--mp-transition-duration) var(--mp-transition-ease),
+    transform 100ms var(--mp-transition-ease);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.keycap:hover:not(:disabled) {
+  color: var(--mp-primary);
+  border-color: rgba(228, 197, 108, 0.4);
+  box-shadow:
+    0 0 8px rgba(228, 197, 108, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.keycap:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 4px rgba(228, 197, 108, 0.1),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-bottom-width: 1px;
+}
+
+.keycap:focus-visible {
+  outline: 2px solid var(--mp-primary);
+  outline-offset: 2px;
+}
+
+.keycap:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* NavigationControls layout */
+.controls {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 200ms var(--mp-transition-ease);
+}
+
+.controls.visible {
+  pointer-events: auto;
+}
+
+.controls.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arrowLeft,
+.arrowRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  min-width: 44px;
+  height: 44px;
+  font-size: 18px;
+}
+
+.arrowLeft { left: 16px; }
+.arrowRight { right: 16px; }
+
+.toolbar {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
