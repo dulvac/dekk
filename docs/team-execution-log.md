@@ -74,6 +74,77 @@ sequenceDiagram
     Lead->>Lead: Write color scheme design doc
 ```
 
+## Invocation #4 — 2026-03-09 14:00 — "CLI + Homebrew implementation + team review"
+
+### Interactions
+| Time | Summary |
+|------|---------|
+| 12:45 | Lead created feature/cli-homebrew branch, began executing 14-task plan |
+| 12:50 | Lead completed Task 1 (shared types + build infrastructure) |
+| 12:52 | Lead dispatched Ada for Task 2 (LocalSource), Ada for Task 3 (URL parser) in parallel |
+| 12:58 | Both agents returned — 343 tests pass, committed Tasks 1-3 |
+| 13:00 | Lead dispatched Ada for Task 4 (HTTP server) |
+| 13:10 | Ada returned — 356 tests pass. Lead dispatched Ada for Task 5 (CLI entry point) |
+| 13:27 | Ada returned — 369 tests pass, CLI builds to 30.6kb. Committed Tasks 4-5 |
+| 13:30 | Lead dispatched Rex for Task 6 (registry), Rex for Task 7 (env detection) in parallel |
+| 13:56 | Both agents returned — 379 tests pass. Committed Tasks 6-7 |
+| 13:57 | Lead dispatched Rex for Task 8 (async loader), Rex for Task 9 (useRegistry) in parallel |
+| 14:02 | Both agents returned — 387 tests pass. Committed Tasks 8-9 |
+| 14:03 | Lead dispatched Sage for Task 10 (auth), Ada for Task 11 (GitHubSource) in parallel |
+| 14:10 | Both agents returned — 417 tests pass. Committed Tasks 10-11 |
+| 14:11 | Lead implemented Task 12 (wire GitHub source) directly — committed |
+| 14:12 | Lead dispatched Turing for Task 13 (E2E), Turing for Task 14 (release) in parallel |
+| 14:18 | Both agents returned — 490 unit tests + 5 E2E pass. Committed Tasks 13-14 |
+| 14:20 | Lead dispatched Ada, Sage, Turing for team review |
+| 14:25 | Ada → Lead: 21 findings (3 critical, 4 high, 6 medium, 4 low, 4 suggestions) |
+| 14:25 | Sage → Lead: 16 findings (0 critical, 3 high, 6 medium, 7 low) |
+| 14:27 | Turing → Lead: 10 findings (0 critical, 0 high, 4 medium, 6 low) + all tests pass |
+| 14:28 | Lead compiled consolidated review report |
+
+### Diagram
+```mermaid
+sequenceDiagram
+    participant Lead
+    participant Ada
+    participant Rex
+    participant Sage
+    participant Turing
+    Note over Lead: Phase 1 — CLI Foundation
+    Lead->>Lead: Task 1 (shared types)
+    Lead->>Ada: Task 2 (LocalSource)
+    Lead->>Ada: Task 3 (URL parser)
+    Ada->>Lead: Tasks 2+3 complete (343 tests)
+    Lead->>Ada: Task 4 (HTTP server)
+    Ada->>Lead: Task 4 complete (356 tests)
+    Lead->>Ada: Task 5 (CLI entry point)
+    Ada->>Lead: Task 5 complete (369 tests)
+    Note over Lead: Phase 2 — SPA Integration
+    Lead->>Rex: Task 6 (registry fetch)
+    Lead->>Rex: Task 7 (env detection)
+    Rex->>Lead: Tasks 6+7 complete (379 tests)
+    Lead->>Rex: Task 8 (async loader)
+    Lead->>Rex: Task 9 (useRegistry)
+    Rex->>Lead: Tasks 8+9 complete (387 tests)
+    Note over Lead: Phase 3 — GitHub Remote
+    Lead->>Sage: Task 10 (auth module)
+    Lead->>Ada: Task 11 (GitHubSource)
+    Sage->>Lead: Task 10 complete
+    Ada->>Lead: Task 11 complete (417 tests)
+    Lead->>Lead: Task 12 (wire GitHub)
+    Note over Lead: Phase 4 — Distribution
+    Lead->>Turing: Task 13 (E2E tests)
+    Lead->>Turing: Task 14 (release workflow)
+    Turing->>Lead: Tasks 13+14 complete (490+5 tests)
+    Note over Lead: Team Review
+    Lead->>Ada: Architecture review
+    Lead->>Sage: Security review
+    Lead->>Turing: QA review
+    Ada->>Lead: 21 findings
+    Sage->>Lead: 16 findings
+    Turing->>Lead: 10 findings
+    Lead->>Lead: Consolidated report
+```
+
 ## Invocation #3 — 2026-02-26 11:45 — "Implement color scheme + fix button contrast + visual QA skill"
 
 ### Interactions
