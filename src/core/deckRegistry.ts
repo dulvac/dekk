@@ -1,10 +1,5 @@
-export interface DeckEntry {
-  id: string
-  title: string
-  author?: string
-  slideCount: number
-  rawMarkdown: string
-}
+export type { DeckEntry, DeckListEntry } from 'shared/types'
+import type { DeckEntry } from 'shared/types'
 
 function extractTitle(markdown: string): { title?: string; author?: string } {
   const match = markdown.match(/^---\n([\s\S]*?)\n---\n/)

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "build:cli": "esbuild cli/index.ts --bundle --platform=node --target=node22 --outfile=bin/dekk.js --format=esm --banner:js='#!/usr/bin/env node'"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",
@@ -40,6 +41,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.4.1",
+    "esbuild": "^0.27.3",
     "eslint": "^9.25.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
