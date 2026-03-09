@@ -2,7 +2,7 @@ name: Autofix
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -26,6 +26,11 @@ permissions:
 jobs:
   classify:
     runs-on: ubuntu-latest
+    # Only run when the 'autofix' label is applied (requires triage+ access),
+    # or via manual workflow_dispatch (requires write access)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'autofix'
     outputs:
       issue_type: ${{ steps.classify.outputs.issue_type }}
       issue_number: ${{ steps.classify.outputs.issue_number }}
@@ -33,6 +38,20 @@ jobs:
       issue_body: ${{ steps.classify.outputs.issue_body }}
       should_run: ${{ steps.classify.outputs.should_run }}
     steps:
+      - name: Verify sender has write access
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENDER_LOGIN: ${{ github.event.sender.login }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+        run: |
+          PERMISSION=$(gh api "repos/${{ github.repository }}/collaborators/${SENDER_LOGIN}/permission" --jq '.permission')
+          if [[ "$PERMISSION" != "write" && "$PERMISSION" != "admin" ]]; then
+            echo "::error::User ${SENDER_LOGIN} does not have write access (permission: $PERMISSION). Removing autofix label."
+            gh issue edit "$ISSUE_NUM" --remove-label "autofix"
+            exit 1
+          fi
+
       - name: Get issue data
         id: issue-data
         env:
@@ -72,8 +91,7 @@ jobs:
         id: classify
         if: steps.check-state.outputs.skip != 'true'
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
           ISSUE_TITLE_INPUT: ${{ steps.issue-data.outputs.issue_title }}
@@ -111,7 +129,7 @@ jobs:
           if [ -z "$ISSUE_TYPE" ]; then
             npm install -g @anthropic-ai/claude-code@latest 2>/dev/null
             CLASSIFICATION=$(claude --print \
-              --model "us.anthropic.claude-sonnet-4-0-20250514-v1:0" \
+              --model "us.anthropic.claude-sonnet-4-6" \
               --provider bedrock \
               "Classify this GitHub issue as exactly one of: bug, feature, skip. Reply with ONLY that single word, nothing else.
 
@@ -151,11 +169,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      ANTHROPIC_MODEL: ${{ github.event.inputs.model_override || 'us.anthropic.claude-opus-4-0-20250514-v1:0' }}
+      ANTHROPIC_MODEL: ${{ github.event.inputs.model_override || 'us.anthropic.claude-opus-4-6-v1' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -165,8 +182,7 @@ jobs:
 
       - name: Mask secrets
         run: |
-          echo "::add-mask::${{ secrets.AWS_ACCESS_KEY_ID }}"
-          echo "::add-mask::${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          echo "::add-mask::${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}"
 
       - name: Add autofix-running label
         env:
@@ -282,7 +298,7 @@ jobs:
             --model "$ANTHROPIC_MODEL" \
             --provider bedrock \
             --max-turns 50 \
-            --thinking-budget 32768 \
+            --thinking-budget 65536 \
             "$PROMPT" 2>&1)
           CLAUDE_EXIT=$?
           set -e

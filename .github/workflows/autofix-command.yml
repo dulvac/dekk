@@ -71,6 +71,8 @@ jobs:
         env:
           ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
           MODEL_OVERRIDE: ${{ steps.parse.outputs.model_override }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
         run: |
           if [ -n "$MODEL_OVERRIDE" ]; then
             gh workflow run autofix.yml \
@@ -83,7 +85,7 @@ jobs:
 
           gh issue edit "$ISSUE_NUM" --remove-label "autofix-failed" 2>/dev/null || true
 
-          gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
             -f content='rocket' --silent
 
       - name: Handle cancel
