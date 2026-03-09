@@ -1,7 +1,7 @@
 import { useEffect, type Dispatch } from 'react'
 import type { Route } from '../core/route'
 import type { SlideAction } from '../core/store'
-import { loadDeck, migrateOldStorage } from '../core/loader'
+import { loadDeck, loadDeckFromApi, isCliMode, migrateOldStorage } from '../core/loader'
 
 /**
  * Loads/unloads the deck whenever the route changes.
@@ -29,13 +29,32 @@ export function useDeckLoader(
       return
     }
 
-    const markdown = loadDeck(deckId)
+    if (!isCliMode()) {
+      // Static mode — sync load from build-time registry
+      const markdown = loadDeck(deckId)
+      if (markdown) {
+        dispatch({ type: 'LOAD_DECK', deckId, markdown })
+      } else {
+        setRoute({ view: 'picker' })
+      }
+      return
+    }
 
-    if (markdown) {
-      dispatch({ type: 'LOAD_DECK', deckId, markdown })
-    } else {
-      // Deck not found, redirect to picker
-      setRoute({ view: 'picker' })
+    // CLI mode — async load from API
+    let cancelled = false
+
+    loadDeckFromApi(deckId).then((result) => {
+      if (cancelled) return
+      if (result.content) {
+        dispatch({ type: 'LOAD_DECK', deckId, markdown: result.content })
+      } else if (result.error === 'not-found') {
+        setRoute({ view: 'picker' })
+      }
+      // On 'disconnected', don't redirect — user stays on current view
+    })
+
+    return () => {
+      cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckId])
