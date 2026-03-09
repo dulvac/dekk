@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { execFile, exec } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { LocalSource } from './sources/local'
 import { GitHubSource } from './sources/github'
@@ -12,7 +12,6 @@ import { getToken, saveToken, deleteToken, isTokenOld, promptForToken } from './
 import type { DeckSource } from './sources/types'
 
 const execFileAsync = promisify(execFile)
-const execAsync = promisify(exec)
 
 export interface CliArgs {
   command?: 'version' | 'help' | 'update' | 'logout'
@@ -261,7 +260,7 @@ async function handleServe(args: CliArgs): Promise<void> {
   console.log(`Open ${url} in your browser`)
 
   if (args.open) {
-    execAsync(`open ${url}`).catch(() => {
+    execFileAsync('open', [url]).catch(() => {
       // Silently ignore if 'open' command fails
     })
   }

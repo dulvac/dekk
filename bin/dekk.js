@@ -5,14 +5,13 @@ import { readFile as readFile3 } from "node:fs/promises";
 import { stat as stat2 } from "node:fs/promises";
 import path2 from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFile, exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 // cli/sources/local.ts
 import { readdir, stat, readFile, writeFile } from "node:fs/promises";
 import { join, resolve, relative } from "node:path";
 var VALID_ID = /^[a-zA-Z0-9_-]+$/;
-var THEMATIC_BREAK_LINE = /^\s*(?:(-\s*){3,}|(\*\s*){3,}|(_\s*){3,})\s*$/;
 function slugify(name) {
   return name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
@@ -33,20 +32,9 @@ function extractFrontmatter(markdown) {
   return result;
 }
 function countSlides(markdown) {
-  let body = markdown;
-  const fmMatch = markdown.match(/^---\n[\s\S]*?\n---\n/);
-  if (fmMatch) {
-    body = markdown.slice(fmMatch[0].length);
-  }
+  const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, "");
   if (!body.trim()) return 0;
-  const lines = body.split("\n");
-  let slideCount = 1;
-  for (const line of lines) {
-    if (THEMATIC_BREAK_LINE.test(line)) {
-      slideCount++;
-    }
-  }
-  return slideCount;
+  return body.split(/\n---\n/).length;
 }
 function validateId(id) {
   if (!VALID_ID.test(id)) {
@@ -132,7 +120,6 @@ var LocalSource = class {
 
 // cli/sources/github.ts
 var VALID_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-var THEMATIC_BREAK_LINE2 = /^\s*(?:(-\s*){3,}|(\*\s*){3,}|(_\s*){3,})\s*$/;
 var GitHubSource = class {
   writable = true;
   sourceType = "github";
@@ -387,20 +374,9 @@ function extractFrontmatter2(markdown) {
   return result;
 }
 function countSlides2(markdown) {
-  let body = markdown;
-  const fmMatch = markdown.match(/^---\n[\s\S]*?\n---\n/);
-  if (fmMatch) {
-    body = markdown.slice(fmMatch[0].length);
-  }
+  const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, "");
   if (!body.trim()) return 0;
-  const lines = body.split("\n");
-  let slideCount = 1;
-  for (const line of lines) {
-    if (THEMATIC_BREAK_LINE2.test(line)) {
-      slideCount++;
-    }
-  }
-  return slideCount;
+  return body.split(/\n---\n/).length;
 }
 
 // cli/server.ts
@@ -427,7 +403,10 @@ var MIME_TYPES = {
 var SECURITY_HEADERS = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
-  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"
+  "Content-Security-Policy": (
+    // unsafe-eval required by Mermaid.js for diagram rendering
+    "default-src 'self'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'"
+  )
 };
 var VALID_ID_PATTERN2 = /^[a-zA-Z0-9_-]+$/;
 function setSecurityHeaders(res) {
@@ -487,7 +466,8 @@ function createServer(source, distDir, port) {
   let indexHtml = "";
   const indexHtmlReady = fs.readFile(path.join(resolvedDistDir, "index.html"), "utf-8").then(
     (content) => {
-      const metaTags = `<meta name="dekk-mode" content="cli"><meta name="dekk-source" content="${source.sourceType}">`;
+      const safeSourceType = source.sourceType === "local" || source.sourceType === "github" ? source.sourceType : "unknown";
+      const metaTags = `<meta name="dekk-mode" content="cli"><meta name="dekk-source" content="${safeSourceType}">`;
       indexHtml = content.replace("<head>", `<head>${metaTags}`);
     },
     () => {
@@ -551,8 +531,12 @@ function createServer(source, distDir, port) {
         sendError(res, 400, 'Missing or invalid "content" field');
         return;
       }
-      const result = await source.writeDeck(id, parsed.content);
-      sendJson(res, 200, result);
+      try {
+        const result = await source.writeDeck(id, parsed.content);
+        sendJson(res, 200, result);
+      } catch {
+        sendError(res, 500, "Failed to write deck");
+      }
       return;
     }
     if (pathname.startsWith("/api/")) {
@@ -786,7 +770,6 @@ async function promptForToken(host) {
 
 // cli/index.ts
 var execFileAsync = promisify(execFile);
-var execAsync = promisify(exec);
 function parseArgs(argv) {
   const args = {
     port: 3e3,
@@ -987,7 +970,7 @@ async function handleServe(args) {
   console.log(`Serving decks from ${args.source}`);
   console.log(`Open ${url} in your browser`);
   if (args.open) {
-    execAsync(`open ${url}`).catch(() => {
+    execFileAsync("open", [url]).catch(() => {
     });
   }
   const shutdown = () => {

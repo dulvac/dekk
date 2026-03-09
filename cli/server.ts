@@ -26,6 +26,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Content-Security-Policy':
+    // unsafe-eval required by Mermaid.js for diagram rendering
     "default-src 'self'; script-src 'self' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'",
 }
 
@@ -100,7 +101,8 @@ export function createServer(source: DeckSource, distDir: string, port: number):
   let indexHtml = ''
   const indexHtmlReady = fs.readFile(path.join(resolvedDistDir, 'index.html'), 'utf-8').then(
     (content) => {
-      const metaTags = `<meta name="dekk-mode" content="cli"><meta name="dekk-source" content="${source.sourceType}">`
+      const safeSourceType = source.sourceType === 'local' || source.sourceType === 'github' ? source.sourceType : 'unknown'
+      const metaTags = `<meta name="dekk-mode" content="cli"><meta name="dekk-source" content="${safeSourceType}">`
       indexHtml = content.replace('<head>', `<head>${metaTags}`)
     },
     () => {
@@ -177,8 +179,12 @@ export function createServer(source: DeckSource, distDir: string, port: number):
         return
       }
 
-      const result = await source.writeDeck(id, parsed.content)
-      sendJson(res, 200, result)
+      try {
+        const result = await source.writeDeck(id, parsed.content)
+        sendJson(res, 200, result)
+      } catch {
+        sendError(res, 500, 'Failed to write deck')
+      }
       return
     }
 

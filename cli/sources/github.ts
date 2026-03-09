@@ -11,8 +11,6 @@ export interface GitHubSourceOptions {
 }
 
 const VALID_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
-const THEMATIC_BREAK_LINE = /^\s*(?:(-\s*){3,}|(\*\s*){3,}|(_\s*){3,})\s*$/
-
 interface RegistryEntry {
   path: string
   sha?: string
@@ -376,22 +374,8 @@ function extractFrontmatter(markdown: string): {
 }
 
 function countSlides(markdown: string): number {
-  let body = markdown
-  const fmMatch = markdown.match(/^---\n[\s\S]*?\n---\n/)
-  if (fmMatch) {
-    body = markdown.slice(fmMatch[0].length)
-  }
-
+  // Must match the SPA's deckRegistry.ts logic exactly
+  const body = markdown.replace(/^---\n[\s\S]*?\n---\n/, '')
   if (!body.trim()) return 0
-
-  const lines = body.split('\n')
-  let slideCount = 1
-
-  for (const line of lines) {
-    if (THEMATIC_BREAK_LINE.test(line)) {
-      slideCount++
-    }
-  }
-
-  return slideCount
+  return body.split(/\n---\n/).length
 }
