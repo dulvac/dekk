@@ -123,6 +123,114 @@ describe('saveToDevServer', () => {
   })
 })
 
+describe('detectEnvironment - cli mode', () => {
+  beforeEach(async () => {
+    vi.resetModules()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    const { resetEnvironmentCache } = await import('./persistence')
+    resetEnvironmentCache()
+  })
+
+  afterEach(() => {
+    const meta = document.querySelector('meta[name="dekk-mode"]')
+    if (meta) document.head.removeChild(meta)
+  })
+
+  it('returns cli when dekk-mode meta tag is present', async () => {
+    const meta = document.createElement('meta')
+    meta.setAttribute('name', 'dekk-mode')
+    meta.setAttribute('content', 'cli')
+    document.head.appendChild(meta)
+    const { detectEnvironment } = await import('./persistence')
+    const env = await detectEnvironment()
+    expect(env).toBe('cli')
+  })
+
+  it('ignores meta tag with non-cli content', async () => {
+    const meta = document.createElement('meta')
+    meta.setAttribute('name', 'dekk-mode')
+    meta.setAttribute('content', 'other')
+    document.head.appendChild(meta)
+    const { detectEnvironment } = await import('./persistence')
+    const env = await detectEnvironment()
+    expect(env).not.toBe('cli')
+  })
+})
+
+describe('saveToCliServer', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends POST to /api/write/{deckId}', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { saveToCliServer } = await import('./persistence')
+    await saveToCliServer('my-deck', '# Hello')
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/write/my-deck',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: '# Hello' }),
+      })
+    )
+  })
+
+  it('returns WriteResult with prUrl when present', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ prUrl: 'https://github.com/org/repo/pull/1' }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { saveToCliServer } = await import('./persistence')
+    const result = await saveToCliServer('my-deck', '# Hello')
+    expect(result.prUrl).toBe('https://github.com/org/repo/pull/1')
+  })
+
+  it('returns WriteResult without prUrl for local save', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { saveToCliServer } = await import('./persistence')
+    const result = await saveToCliServer('my-deck', '# Hello')
+    expect(result.prUrl).toBeUndefined()
+  })
+
+  it('throws on non-ok response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
+
+    const { saveToCliServer } = await import('./persistence')
+    await expect(saveToCliServer('my-deck', '# Hello')).rejects.toThrow('Save failed: 500')
+  })
+
+  it('encodes deckId in URL', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const { saveToCliServer } = await import('./persistence')
+    await saveToCliServer('my deck/special', '# Hello')
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/write/my%20deck%2Fspecial',
+      expect.any(Object)
+    )
+  })
+})
+
 describe('saveToGitHub', () => {
   beforeEach(() => {
     vi.resetModules()

@@ -6,8 +6,9 @@ import {
   updateFileContents,
   createPullRequest,
 } from './github-api'
+import type { WriteResult } from 'shared/types'
 
-export type Environment = 'dev' | 'github-pages' | 'unknown'
+export type Environment = 'dev' | 'cli' | 'github-pages' | 'unknown'
 
 let cachedEnvironment: Environment | null = null
 
@@ -18,6 +19,13 @@ export function resetEnvironmentCache(): void {
 
 export async function detectEnvironment(): Promise<Environment> {
   if (cachedEnvironment) return cachedEnvironment
+
+  // Check if served by Dekk CLI
+  const metaMode = document.querySelector('meta[name="dekk-mode"]')?.getAttribute('content')
+  if (metaMode === 'cli') {
+    cachedEnvironment = 'cli'
+    return 'cli'
+  }
 
   // Check if running in Vite dev server
   if (import.meta.env.DEV) {
@@ -123,4 +131,14 @@ export async function saveToGitHub(
   )
 
   return { prUrl }
+}
+
+export async function saveToCliServer(deckId: string, content: string): Promise<WriteResult> {
+  const res = await fetch(`/api/write/${encodeURIComponent(deckId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) throw new Error(`Save failed: ${res.status}`)
+  return await res.json()
 }

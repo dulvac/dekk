@@ -13,6 +13,7 @@ import { exportMarkdown } from '../core/exporter'
 import {
   detectEnvironment,
   saveToDevServer,
+  saveToCliServer,
   saveToGitHub,
   detectGitHubRepo,
   type Environment,
@@ -123,6 +124,16 @@ export function EditorView() {
         } else {
           setErrorMessage('Dev server save failed')
           setSaveStatus('error')
+        }
+      } else if (environment === 'cli') {
+        const result = await saveToCliServer(currentDeck, localMarkdown)
+        if (result.prUrl) {
+          setPrUrl(result.prUrl)
+          setSaveStatus('pr-created')
+        } else {
+          setSaveStatus('saved')
+          if (resetStatusTimerRef.current) clearTimeout(resetStatusTimerRef.current)
+          resetStatusTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000)
         }
       } else if (environment === 'github-pages') {
         // Check if token exists
