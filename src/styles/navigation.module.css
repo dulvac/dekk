@@ -6,12 +6,12 @@
   min-width: 36px;
   height: 36px;
   padding: 0 12px;
-  background: rgba(50, 45, 43, 0.6);
+  background: rgba(50, 45, 43, 0.85);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(138, 125, 90, 0.25);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(138, 125, 90, 0.4);
+  border-bottom: 2px solid rgba(0, 0, 0, 0.4);
   border-radius: 6px;
-  color: var(--mp-muted);
+  color: var(--mp-text);
   font-family: var(--mp-font-mono);
   font-size: 13px;
   font-weight: 500;
