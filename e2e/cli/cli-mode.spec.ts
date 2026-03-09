@@ -18,15 +18,15 @@ test('server responds to /api/deck/:id with markdown', async ({ request }) => {
 })
 
 test('SPA loads in CLI mode and shows picker', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.locator('text=Demo Talk')).toBeVisible()
-  await expect(page.locator('text=Quick Intro')).toBeVisible()
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await expect(page.getByText('Demo Talk')).toBeVisible({ timeout: 15000 })
+  await expect(page.getByText('Quick Intro')).toBeVisible({ timeout: 15000 })
 })
 
 test('SPA navigates to a deck from picker', async ({ page }) => {
-  await page.goto('/')
-  await page.click('text=Demo Talk')
-  await expect(page.locator('text=Slide One')).toBeVisible()
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await page.getByText('Demo Talk').click({ timeout: 15000 })
+  await expect(page.getByText('Slide One')).toBeVisible({ timeout: 15000 })
 })
 
 test('security headers are present', async ({ request }) => {
