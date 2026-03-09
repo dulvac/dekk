@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url'
 import { execFile, exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import { LocalSource } from './sources/local'
+import { GitHubSource } from './sources/github'
 import { createServer } from './server'
+import { parseGitHubUrl } from './url-parser'
+import { getToken, saveToken, deleteToken, isTokenOld, promptForToken } from './auth'
 import type { DeckSource } from './sources/types'
 
 const execFileAsync = promisify(execFile)
@@ -168,8 +171,13 @@ async function handleUpdate(): Promise<void> {
   }
 }
 
-function handleLogout(): void {
-  console.log('Not yet implemented')
+async function handleLogout(host?: string): Promise<void> {
+  await deleteToken(host)
+  if (host) {
+    console.log(`Credentials removed for ${host}`)
+  } else {
+    console.log('All stored credentials removed')
+  }
 }
 
 async function handleServe(args: CliArgs): Promise<void> {
@@ -177,31 +185,79 @@ async function handleServe(args: CliArgs): Promise<void> {
     throw new Error('No source specified')
   }
 
+  let source: DeckSource
+
   if (args.type === 'github') {
-    console.log('GitHub source not yet implemented')
-    process.exit(1)
-    return
-  }
+    const parsed = parseGitHubUrl(args.source, args.ref)
+    if (!parsed) {
+      throw new Error(`Invalid GitHub URL: ${args.source}`)
+    }
 
-  // Validate local path
-  const sourcePath = path.resolve(args.source)
-  let sourceStat: Awaited<ReturnType<typeof stat>>
-  try {
-    sourceStat = await stat(sourcePath)
-  } catch {
-    throw new Error(`Path does not exist: ${sourcePath}`)
-  }
-  if (!sourceStat.isDirectory()) {
-    throw new Error(`Path is not a directory: ${sourcePath}`)
-  }
+    // Try to get stored token first
+    let token = await getToken(parsed.host)
 
-  const source: DeckSource = new LocalSource(sourcePath)
+    if (token) {
+      const old = await isTokenOld(parsed.host)
+      if (old) {
+        console.warn(`Warning: Token for ${parsed.host} is over 90 days old. Consider refreshing it.`)
+      }
+    }
+
+    // Create source — if it fails with auth error, prompt for token
+    source = new GitHubSource({
+      host: parsed.host,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      path: parsed.path,
+      ref: parsed.ref,
+      token: token ?? undefined,
+    })
+
+    // Test the connection by listing decks
+    try {
+      await source.listDecks()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('401') || msg.includes('403')) {
+        console.log(`Authentication required for ${parsed.host}`)
+        token = await promptForToken(parsed.host)
+        await saveToken(parsed.host, token, 'cli-user')
+
+        // Recreate source with token
+        await source.dispose()
+        source = new GitHubSource({
+          host: parsed.host,
+          owner: parsed.owner,
+          repo: parsed.repo,
+          path: parsed.path,
+          ref: parsed.ref,
+          token,
+        })
+      } else {
+        throw err
+      }
+    }
+  } else {
+    // Validate local path
+    const sourcePath = path.resolve(args.source)
+    let sourceStat: Awaited<ReturnType<typeof stat>>
+    try {
+      sourceStat = await stat(sourcePath)
+    } catch {
+      throw new Error(`Path does not exist: ${sourcePath}`)
+    }
+    if (!sourceStat.isDirectory()) {
+      throw new Error(`Path is not a directory: ${sourcePath}`)
+    }
+
+    source = new LocalSource(sourcePath)
+  }
   const thisFile = fileURLToPath(import.meta.url)
   const distDir = path.resolve(path.dirname(thisFile), '..', 'dist')
   const server = createServer(source, distDir, args.port)
 
   const url = `http://127.0.0.1:${args.port}`
-  console.log(`Serving decks from ${sourcePath}`)
+  console.log(`Serving decks from ${args.source}`)
   console.log(`Open ${url} in your browser`)
 
   if (args.open) {
@@ -238,7 +294,7 @@ async function main(): Promise<void> {
       await handleUpdate()
       return
     case 'logout':
-      handleLogout()
+      await handleLogout(args.logoutHost)
       return
     default:
       await handleServe(args)
