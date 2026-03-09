@@ -1,8 +1,8 @@
-import type { DeckEntry } from '../core/deckRegistry'
+import type { DeckListEntry } from 'shared/types'
 import styles from '../styles/picker.module.css'
 
 interface PickerViewProps {
-  entries: DeckEntry[]
+  entries: DeckListEntry[]
   onSelectDeck: (deckId: string) => void
 }
 

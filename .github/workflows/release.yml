@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:run
+
+      - name: Build SPA
+        run: npm run build
+
+      - name: Build CLI
+        run: npm run build:cli
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set package version
+        run: npm version "$VERSION" --no-git-tag-version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Create tarball
+        run: |
+          mkdir -p release
+          tar -czf "release/dekk-${VERSION}.tar.gz" \
+            bin/dekk.js \
+            dist/ \
+            package.json
+          shasum -a 256 "release/dekk-${VERSION}.tar.gz" > "release/dekk-${VERSION}.tar.gz.sha256"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Read SHA256
+        id: sha256
+        run: echo "hash=$(cut -d ' ' -f1 "release/dekk-${VERSION}.tar.gz.sha256")" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/dekk-${{ steps.version.outputs.version }}.tar.gz
+            release/dekk-${{ steps.version.outputs.version }}.tar.gz.sha256
+          generate_release_notes: true
+
+      - name: Dispatch Homebrew formula update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: dulvac/homebrew-dekk
+          event-type: update-formula
+          client-payload: '{"version": "${{ steps.version.outputs.version }}", "sha256": "${{ steps.sha256.outputs.hash }}", "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dekk-${{ steps.version.outputs.version }}.tar.gz"}'

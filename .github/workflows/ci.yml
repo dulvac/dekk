@@ -21,10 +21,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
@@ -36,14 +36,23 @@ jobs:
       - name: Build for GitHub Pages
         run: npm run build -- --base /dekk/
 
+      - name: Build CLI
+        run: npm run build:cli
+
       - name: Run unit tests
         run: npx vitest run
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npx playwright test
+      - name: Run E2E tests (chromium project - GitHub Pages build)
+        run: npx playwright test --project=chromium
+
+      - name: Rebuild SPA for CLI tests (no base prefix)
+        run: npm run build
+
+      - name: Run E2E tests (CLI project)
+        run: npx playwright test --project=cli
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -1,10 +1,5 @@
-export interface DeckEntry {
-  id: string
-  title: string
-  author?: string
-  slideCount: number
-  rawMarkdown: string
-}
+export type { DeckEntry, DeckListEntry } from 'shared/types'
+import type { DeckEntry, DeckListEntry } from 'shared/types'
 
 function extractTitle(markdown: string): { title?: string; author?: string } {
   const match = markdown.match(/^---\n([\s\S]*?)\n---\n/)
@@ -59,4 +54,14 @@ export const deckRegistry: DeckEntry[] = buildRegistry(markdownFiles as Record<s
 
 export function getDeck(id: string): DeckEntry | undefined {
   return deckRegistry.find(entry => entry.id === id)
+}
+
+export async function fetchRuntimeRegistry(): Promise<DeckListEntry[] | null> {
+  try {
+    const res = await fetch('/api/decks')
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
 }

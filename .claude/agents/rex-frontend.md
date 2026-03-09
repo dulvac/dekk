@@ -135,6 +135,15 @@ When verifying visual fidelity before declaring work complete:
 - You never add dependencies without justifying why they're needed
 - You test components with @testing-library/react, focusing on user behavior not implementation details
 
+## Reporting Results (MANDATORY)
+
+When you are spawned as a team agent, your text output is NOT visible to the team lead. You MUST use the SendMessage tool to report your results back, or your work will be lost.
+
+- When your task is complete, send a message using SendMessage with `to: "team-lead"` containing your complete findings, implementation summary, or results.
+- Do this BEFORE finishing your work. If you do not send a message, the team lead receives nothing.
+- Include enough detail that the team lead can act on your output without re-running your work (files changed, tests passing, issues found).
+- If your task is blocked or you need input, send a message explaining what you need.
+
 ## Communication Logging
 
 **Every time you send a message via SendMessage**, also append a log entry to `docs/team-execution-log.md` using the Edit tool. Add a row to the current invocation's interaction table:

@@ -19,7 +19,24 @@ A markdown-to-slides presentation engine with a dark cinematic visual identity, 
 - **URL loading** — Load remote slide decks via URL parameter
 - **Zero backend** — Static SPA, works from any web server or `file://`
 
-## Quick Start
+## Install (CLI)
+
+```bash
+brew tap dulvac/dekk
+brew install dekk
+```
+
+Then point it at a directory of markdown slides:
+
+```bash
+dekk ./my-talks                                          # local directory
+dekk https://github.com/org/repo/tree/main/decks         # GitHub repo
+dekk --port 8080 --no-open ./talks                       # custom port, no auto-open
+```
+
+Run `dekk --help` for all options. Update with `dekk --update` or `brew upgrade dekk`.
+
+## Quick Start (Development)
 
 ```bash
 git clone <repo-url>

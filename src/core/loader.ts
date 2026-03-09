@@ -81,6 +81,22 @@ export function saveDeckDraft(deckId: string, markdown: string): boolean {
   }
 }
 
+export function isCliMode(): boolean {
+  return document.querySelector('meta[name="dekk-mode"]')?.getAttribute('content') === 'cli'
+}
+
+export async function loadDeckFromApi(deckId: string): Promise<{ content: string | null; error?: 'not-found' | 'disconnected' }> {
+  try {
+    const res = await fetch(`/api/deck/${encodeURIComponent(deckId)}`)
+    if (res.status === 404) return { content: null, error: 'not-found' }
+    if (!res.ok) return { content: null, error: 'disconnected' }
+    const content = await res.text()
+    return { content }
+  } catch {
+    return { content: null, error: 'disconnected' }
+  }
+}
+
 export function migrateOldStorage(): void {
   try {
     const old = localStorage.getItem(OLD_STORAGE_KEY)

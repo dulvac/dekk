@@ -183,6 +183,16 @@ sequenceDiagram
 
 **Keep only the last 20 invocations.** When adding invocation #21, delete invocation #1 (the oldest). The team lead is responsible for pruning on each new session start.
 
+## Agent SendMessage Requirement (CRITICAL)
+
+**Team agents MUST use SendMessage to report results.** When an agent is spawned via the `Task` tool with `team_name`, its text output is NOT automatically visible to the team lead. If the agent does not explicitly call `SendMessage(to: "team-lead", ...)`, its work is silently lost.
+
+Every agent definition includes a "Reporting Results (MANDATORY)" section enforcing this. When dispatching agents, the team lead should also include a reminder in the task description:
+
+> Remember: your text output is not visible to me. You MUST use SendMessage with `to: "team-lead"` to report your results before finishing.
+
+**Symptoms of missing SendMessage:** Agent appears to complete (status changes to idle/done) but the team lead receives no output. This is NOT an agent failure -- it means the agent finished but forgot to send its results back.
+
 ## When Agents Report Back
 
 After an agent completes their task:

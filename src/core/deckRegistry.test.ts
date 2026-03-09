@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { buildRegistry } from './deckRegistry'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { buildRegistry, fetchRuntimeRegistry } from './deckRegistry'
 
 describe('buildRegistry', () => {
   const mockFiles: Record<string, string> = {
@@ -45,5 +45,34 @@ describe('buildRegistry', () => {
 describe('getDeck', () => {
   it('returns undefined for unknown id', () => {
     // getDeck is tested via the actual registry — import in integration test
+  })
+})
+
+describe('fetchRuntimeRegistry', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('fetches DeckListEntry[] from /api/decks', async () => {
+    const mockEntries = [{ id: 'test', title: 'Test', slideCount: 3 }]
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockEntries),
+    })
+    const result = await fetchRuntimeRegistry()
+    expect(result).toEqual(mockEntries)
+    expect(fetch).toHaveBeenCalledWith('/api/decks')
+  })
+
+  it('returns null when /api/decks is not available', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+    const result = await fetchRuntimeRegistry()
+    expect(result).toBeNull()
+  })
+
+  it('returns null when fetch throws', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    const result = await fetchRuntimeRegistry()
+    expect(result).toBeNull()
   })
 })

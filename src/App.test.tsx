@@ -5,6 +5,8 @@ import App from './App'
 // Mock the loader module
 vi.mock('./core/loader', () => ({
   loadDeck: vi.fn(),
+  loadDeckFromApi: vi.fn(),
+  isCliMode: vi.fn().mockReturnValue(false),
   saveDeckDraft: vi.fn(),
   migrateOldStorage: vi.fn(),
 }))
