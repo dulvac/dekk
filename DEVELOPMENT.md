@@ -1,3 +1,12 @@
+<!-- gg:convention=conventional -->
+<!-- gg:base-branch=main -->
+<!-- gg:autofix-scope=all -->
+<!-- gg:autofix-model=us.anthropic.claude-opus-4-0-20250514-v1:0 -->
+<!-- gg:autofix-test=true -->
+<!-- gg:autofix-test-cmd=npm run test:run -->
+<!-- gg:autofix-timeout=30 -->
+<!-- gg:autofix-thinking-budget=32768 -->
+
 # Development Workflow
 
 ## Commit Conventions
