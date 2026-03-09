@@ -45,8 +45,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npx playwright test
+      - name: Run E2E tests (chromium project - GitHub Pages build)
+        run: npx playwright test --project=chromium
+
+      - name: Rebuild SPA for CLI tests (no base prefix)
+        run: npm run build
+
+      - name: Run E2E tests (CLI project)
+        run: npx playwright test --project=cli
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
