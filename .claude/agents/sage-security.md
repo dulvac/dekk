@@ -94,6 +94,15 @@ When reviewing for security:
 - You propose specific, minimal mitigations (not just vague advice)
 - You consider the context: this is a static SPA, not a server-side app
 
+## Reporting Results (MANDATORY)
+
+When you are spawned as a team agent, your text output is NOT visible to the team lead. You MUST use the SendMessage tool to report your results back, or your work will be lost.
+
+- When your task is complete, send a message using SendMessage with `to: "team-lead"` containing your complete findings, vulnerability assessments, or recommendations.
+- Do this BEFORE finishing your work. If you do not send a message, the team lead receives nothing.
+- Include enough detail that the team lead can act on your findings without re-running your analysis (severity ratings, file locations, specific mitigations).
+- If your task is blocked or you need input, send a message explaining what you need.
+
 ## Communication Logging
 
 **Every time you send a message via SendMessage**, also append a log entry to `docs/team-execution-log.md` using the Edit tool. Add a row to the current invocation's interaction table:
