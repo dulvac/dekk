@@ -94,6 +94,7 @@ jobs:
         id: classify
         if: steps.check-state.outputs.skip != 'true'
         env:
+          CLAUDE_CODE_USE_BEDROCK: "1"
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
@@ -172,6 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      CLAUDE_CODE_USE_BEDROCK: "1"
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
