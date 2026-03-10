@@ -306,6 +306,7 @@ jobs:
           CLAUDE_EXIT=$?
           set -e
 
+          echo "$PROMPT" > /tmp/claude_prompt.txt
           echo "$CLAUDE_OUTPUT" > /tmp/claude_output.txt
 
           if echo "$CLAUDE_OUTPUT" | grep -q "AUTOFIX_RESULT"; then
@@ -462,6 +463,17 @@ jobs:
           gh issue comment "$ISSUE_NUM" --body "$COMMENT"
           gh issue edit "$ISSUE_NUM" --add-label "autofix-failed"
           exit 1
+
+      - name: Upload Claude logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-logs
+          path: |
+            /tmp/claude_prompt.txt
+            /tmp/claude_output.txt
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Clean up running label
         if: always()
