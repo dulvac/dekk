@@ -6,6 +6,7 @@
 <!-- gg:autofix-test=true -->
 <!-- gg:autofix-test-cmd=npm run test:run -->
 <!-- gg:autofix-timeout=30 -->
+<!-- gg:autofix-max-files=25 -->
 
 ## Mode
 
@@ -25,7 +26,7 @@ Your job is to produce a complete fix or implementation and commit it.
 - ALWAYS read CLAUDE.md and AGENTS.md if they exist for project-specific instructions
 - ALWAYS create commits following the project's commit convention
 - ALWAYS reference the issue number in commits (e.g., "fix: resolve null check, fixes #<issue-number>" for conventional commits)
-- If the issue requires changes across more than 15 files or fundamentally restructures the architecture, report it as too complex — set status to failure with an explanation
+- If the issue requires changes across more than 25 files or fundamentally restructures the architecture, report it as too complex — set status to failure with an explanation
 - If the issue description is too vague to act on, report it as insufficient context — set status to failure
 
 ## Testing

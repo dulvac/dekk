@@ -5,6 +5,7 @@
 <!-- gg:autofix-test=true -->
 <!-- gg:autofix-test-cmd=npm run test:run -->
 <!-- gg:autofix-timeout=30 -->
+<!-- gg:autofix-max-files=25 -->
 <!-- gg:autofix-thinking-budget=65536 -->
 
 

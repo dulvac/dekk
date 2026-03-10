@@ -38,6 +38,9 @@ jobs:
       issue_body: ${{ steps.classify.outputs.issue_body }}
       should_run: ${{ steps.classify.outputs.should_run }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Verify sender has write access
         if: github.event_name != 'workflow_dispatch'
         env:
