@@ -175,7 +175,7 @@ jobs:
       CLAUDE_CODE_USE_BEDROCK: "1"
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
       ANTHROPIC_MODEL: ${{ github.event.inputs.model_override || 'us.anthropic.claude-opus-4-6-v1' }}
     steps:
       - name: Checkout repository
@@ -183,6 +183,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.AUTOFIX_PAT }}
 
       - name: Mask secrets
         run: |
@@ -301,6 +302,7 @@ jobs:
           CLAUDE_OUTPUT=$(claude --print \
             --model "$ANTHROPIC_MODEL" \
             --max-turns 50 \
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(*),NotebookEdit,Agent,mcp__context7__*,mcp__playwright__*" \
             --effort high \
             "$PROMPT" 2>&1)
           CLAUDE_EXIT=$?
