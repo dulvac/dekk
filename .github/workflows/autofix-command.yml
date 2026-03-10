@@ -1,0 +1,162 @@
+name: Autofix Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+jobs:
+  handle-command:
+    if: startsWith(github.event.comment.body, '/autofix')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check permissions
+        id: perms
+        env:
+          COMMENTER: ${{ github.event.comment.user.login }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          PERMISSION=$(gh api "repos/${REPO}/collaborators/${COMMENTER}/permission" -q '.permission')
+
+          if [ "$PERMISSION" != "admin" ] && [ "$PERMISSION" != "write" ] && [ "$PERMISSION" != "maintain" ]; then
+            echo "User ${COMMENTER} has '${PERMISSION}' permission. Write access required."
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='-1' --silent
+            echo "authorized=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "authorized=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Acknowledge command
+        if: steps.perms.outputs.authorized == 'true'
+        env:
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content='eyes' --silent
+
+      - name: Parse command
+        if: steps.perms.outputs.authorized == 'true'
+        id: parse
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+        run: |
+          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
+
+          if echo "$COMMENT_BODY" | grep -qE '^/autofix retry\s*$'; then
+            echo "command=retry" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -qE '^/autofix cancel\s*$'; then
+            echo "command=cancel" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -qE '^/autofix status\s*$'; then
+            echo "command=status" >> "$GITHUB_OUTPUT"
+          elif echo "$COMMENT_BODY" | grep -qE '^/autofix model=\S+'; then
+            MODEL=$(echo "$COMMENT_BODY" | sed -n 's|^/autofix model=\([^ ]*\).*|\1|p')
+            echo "command=retry" >> "$GITHUB_OUTPUT"
+            echo "model_override=${MODEL}" >> "$GITHUB_OUTPUT"
+          else
+            echo "command=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Handle retry
+        if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'retry'
+        env:
+          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
+          MODEL_OVERRIDE: ${{ steps.parse.outputs.model_override }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          if [ -n "$MODEL_OVERRIDE" ]; then
+            gh workflow run autofix.yml \
+              -f issue_number="$ISSUE_NUM" \
+              -f model_override="$MODEL_OVERRIDE"
+          else
+            gh workflow run autofix.yml \
+              -f issue_number="$ISSUE_NUM"
+          fi
+
+          gh issue edit "$ISSUE_NUM" --remove-label "autofix-failed" 2>/dev/null || true
+
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content='rocket' --silent
+
+      - name: Handle cancel
+        if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'cancel'
+        env:
+          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          RUNS=$(gh run list --workflow=autofix.yml --status=in_progress --json databaseId -q '.[].databaseId')
+
+          CANCELLED=0
+          for RUN_ID in $RUNS; do
+            gh run cancel "$RUN_ID" 2>/dev/null && CANCELLED=$((CANCELLED + 1))
+          done
+
+          gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
+
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content='octagonal_sign' --silent
+
+          gh issue comment "$ISSUE_NUM" --body "Autofix cancelled. ${CANCELLED} workflow run(s) stopped."
+
+      - name: Handle status
+        if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'status'
+        env:
+          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        run: |
+          LATEST_RUN=$(gh run list --workflow=autofix.yml --limit 5 --json databaseId,status,conclusion,createdAt,url \
+            -q 'sort_by(.createdAt) | reverse | .[0]')
+
+          if [ -z "$LATEST_RUN" ] || [ "$LATEST_RUN" = "null" ]; then
+            gh issue comment "$ISSUE_NUM" --body "No autofix workflow runs found."
+          else
+            RUN_STATUS=$(echo "$LATEST_RUN" | jq -r '.status')
+            RUN_CONCLUSION=$(echo "$LATEST_RUN" | jq -r '.conclusion // "n/a"')
+            RUN_URL=$(echo "$LATEST_RUN" | jq -r '.url')
+            RUN_CREATED=$(echo "$LATEST_RUN" | jq -r '.createdAt')
+
+            gh issue comment "$ISSUE_NUM" --body "## Autofix Status
+
+          | Field | Value |
+          |-------|-------|
+          | **Status** | ${RUN_STATUS} |
+          | **Conclusion** | ${RUN_CONCLUSION} |
+          | **Started** | ${RUN_CREATED} |
+          | **Run** | [View workflow run](${RUN_URL}) |"
+          fi
+
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content='chart_with_upwards_trend' --silent
+
+      - name: Handle unknown command
+        if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'unknown'
+        env:
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+        run: |
+          gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+            -f content='question' --silent
+
+          gh issue comment "$ISSUE_NUM" --body "### Autofix Commands
+
+          | Command | Description |
+          |---------|-------------|
+          | \`/autofix retry\` | Re-run autofix for this issue |
+          | \`/autofix cancel\` | Cancel the running autofix workflow |
+          | \`/autofix status\` | Show the latest workflow run status |
+          | \`/autofix model=<id>\` | Retry with a specific Bedrock model ID |
+
+          *Requires write access to this repository.*"

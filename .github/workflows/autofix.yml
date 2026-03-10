@@ -1,0 +1,467 @@
+name: Autofix
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to fix'
+        required: true
+        type: number
+      model_override:
+        description: 'Override the default Claude model (Bedrock model ID)'
+        required: false
+        type: string
+
+concurrency:
+  group: autofix-issue-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    # Only run when the 'autofix' label is applied (requires triage+ access),
+    # or via manual workflow_dispatch (requires write access)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'autofix'
+    outputs:
+      issue_type: ${{ steps.classify.outputs.issue_type }}
+      issue_number: ${{ steps.classify.outputs.issue_number }}
+      issue_title: ${{ steps.classify.outputs.issue_title }}
+      issue_body: ${{ steps.classify.outputs.issue_body }}
+      should_run: ${{ steps.classify.outputs.should_run }}
+    steps:
+      - name: Verify sender has write access
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENDER_LOGIN: ${{ github.event.sender.login }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+        run: |
+          PERMISSION=$(gh api "repos/${{ github.repository }}/collaborators/${SENDER_LOGIN}/permission" --jq '.permission')
+          if [[ "$PERMISSION" != "write" && "$PERMISSION" != "admin" ]]; then
+            echo "::error::User ${SENDER_LOGIN} does not have write access (permission: $PERMISSION). Removing autofix label."
+            gh issue edit "$ISSUE_NUM" --remove-label "autofix"
+            exit 1
+          fi
+
+      - name: Get issue data
+        id: issue-data
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUM: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+        run: |
+          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
+
+          ISSUE_JSON=$(gh issue view "$ISSUE_NUM" --json title,body,labels)
+          echo "issue_title=$(echo "$ISSUE_JSON" | jq -r '.title')" >> "$GITHUB_OUTPUT"
+
+          echo "$ISSUE_JSON" | jq -r '.body' > /tmp/issue_body.txt
+          {
+            echo "issue_body<<ISSUE_BODY_EOF"
+            cat /tmp/issue_body.txt
+            echo "ISSUE_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          LABELS=$(echo "$ISSUE_JSON" | jq -r '[.labels[].name] | join(",")')
+          echo "labels=${LABELS}" >> "$GITHUB_OUTPUT"
+
+      - name: Check issue state
+        id: check-state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
+        run: |
+          STATE=$(gh issue view "$ISSUE_NUM" --json state -q '.state')
+          if [ "$STATE" != "OPEN" ]; then
+            echo "Issue is not open (state: $STATE). Skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Classify issue
+        id: classify
+        if: steps.check-state.outputs.skip != 'true'
+        env:
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
+          ISSUE_TITLE_INPUT: ${{ steps.issue-data.outputs.issue_title }}
+          ISSUE_LABELS: ${{ steps.issue-data.outputs.labels }}
+          PREV_ISSUE_BODY: ${{ steps.issue-data.outputs.issue_body }}
+        run: |
+          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
+          echo "issue_title=${ISSUE_TITLE_INPUT}" >> "$GITHUB_OUTPUT"
+          {
+            echo "issue_body<<ISSUE_BODY_EOF"
+            echo "$PREV_ISSUE_BODY"
+            echo "ISSUE_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          ISSUE_TYPE=""
+
+          if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(bug|defect|broken|regression)(,|$)'; then
+            ISSUE_TYPE="bug"
+          fi
+
+          if [ -z "$ISSUE_TYPE" ]; then
+            if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(feature|enhancement|request)(,|$)'; then
+              ISSUE_TYPE="feature"
+            fi
+          fi
+
+          if [ -z "$ISSUE_TYPE" ]; then
+            if echo "$ISSUE_TITLE_INPUT" | grep -iqE '^\[(bug|fix)\]'; then
+              ISSUE_TYPE="bug"
+            elif echo "$ISSUE_TITLE_INPUT" | grep -iqE '^\[(feat|feature|request|enhancement)\]'; then
+              ISSUE_TYPE="feature"
+            fi
+          fi
+
+          if [ -z "$ISSUE_TYPE" ]; then
+            npm install -g @anthropic-ai/claude-code@latest 2>/dev/null
+            CLASSIFICATION=$(claude --print \
+              --model "us.anthropic.claude-sonnet-4-6" \
+              --provider bedrock \
+              "Classify this GitHub issue as exactly one of: bug, feature, skip. Reply with ONLY that single word, nothing else.
+
+              Title: ${ISSUE_TITLE_INPUT}
+              Body: $(cat /tmp/issue_body.txt | head -c 2000)
+              Labels: ${ISSUE_LABELS}")
+
+            CLASSIFICATION=$(echo "$CLASSIFICATION" | tr '[:upper:]' '[:lower:]' | xargs)
+            case "$CLASSIFICATION" in
+              bug|feature|skip) ISSUE_TYPE="$CLASSIFICATION" ;;
+              *) ISSUE_TYPE="skip" ;;
+            esac
+          fi
+
+          SCOPE="all"
+          if [ "$SCOPE" = "bugs" ] && [ "$ISSUE_TYPE" = "feature" ]; then
+            echo "Issue classified as feature, but scope is bugs-only. Skipping."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$ISSUE_TYPE" = "skip" ]; then
+            echo "Issue classified as skip. Not actionable."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Issue classified as: ${ISSUE_TYPE}"
+          echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
+  fix:
+    needs: classify
+    if: needs.classify.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ANTHROPIC_MODEL: ${{ github.event.inputs.model_override || 'us.anthropic.claude-opus-4-6-v1' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Mask secrets
+        run: |
+          echo "::add-mask::${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}"
+
+      - name: Add autofix-running label
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+        run: |
+          gh issue edit "$ISSUE_NUM" --add-label "autofix-running"
+
+      - name: Check for existing autofix PR
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+        run: |
+          EXISTING_PR=$(gh pr list --label "autofix" --json url,title --jq ".[] | select(.title | contains(\"#${ISSUE_NUM}\")) | .url" | head -1)
+          if [ -n "$EXISTING_PR" ]; then
+            gh issue comment "$ISSUE_NUM" --body "An autofix PR already exists: ${EXISTING_PR}. Close it first, then run \`/autofix retry\`."
+            gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Create feature branch
+        id: branch
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
+        run: |
+          SHORT_DESC=$(echo "$ISSUE_TITLE_INPUT" \
+            | sed 's/\[.*\]//g' \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9 ]//g' \
+            | xargs \
+            | tr ' ' '-' \
+            | cut -c1-40)
+
+          if [ "$ISSUE_TYPE" = "bug" ]; then
+            BRANCH="fix/issue-${ISSUE_NUM}-${SHORT_DESC}"
+          else
+            BRANCH="feat/issue-${ISSUE_NUM}-${SHORT_DESC}"
+          fi
+
+          git checkout -B "$BRANCH"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect and install toolchain
+        run: |
+          if [ -f "package-lock.json" ] || [ -f "yarn.lock" ] || [ -f "pnpm-lock.yaml" ]; then
+            if [ -f ".nvmrc" ] || [ -f ".node-version" ]; then
+              NODE_VERSION=$(cat .nvmrc .node-version 2>/dev/null | head -1)
+              curl -fsSL https://fnm.vercel.app/install | bash
+              export PATH="$HOME/.local/share/fnm:$PATH"
+              eval "$(fnm env)"
+              fnm install "$NODE_VERSION"
+              fnm use "$NODE_VERSION"
+            fi
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            elif [ -f "yarn.lock" ]; then
+              npm install -g yarn && yarn install --frozen-lockfile
+            elif [ -f "pnpm-lock.yaml" ]; then
+              npm install -g pnpm && pnpm install --frozen-lockfile
+            fi
+          fi
+
+          if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
+            python3 -m pip install --upgrade pip
+            if [ -f "requirements.txt" ]; then
+              pip install -r requirements.txt
+            elif [ -f "pyproject.toml" ]; then
+              pip install -e ".[dev]" 2>/dev/null || pip install -e .
+            fi
+          fi
+
+          if [ -f "pom.xml" ]; then
+            echo "Maven project detected"
+          fi
+
+          if [ -f "go.mod" ]; then
+            echo "Go project detected"
+          fi
+
+          if [ -f "Cargo.toml" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@latest
+
+      - name: Run Claude Code
+        id: claude
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
+          ISSUE_BODY_INPUT: ${{ needs.classify.outputs.issue_body }}
+        run: |
+          PROMPT=$(cat <<PROMPT_EOF
+          You are resolving GitHub issue #${ISSUE_NUM}.
+
+          **Issue type:** ${ISSUE_TYPE}
+          **Title:** ${ISSUE_TITLE_INPUT}
+          **Body:**
+          ${ISSUE_BODY_INPUT}
+
+          Follow the instructions in .claude/autofix-instructions.md.
+          Read CLAUDE.md, AGENTS.md, and DEVELOPMENT.md for project conventions.
+
+          Implement the fix or feature, commit your changes, and output the AUTOFIX_RESULT block as specified in the instructions.
+          PROMPT_EOF
+          )
+
+          set +e
+          CLAUDE_OUTPUT=$(claude --print \
+            --model "$ANTHROPIC_MODEL" \
+            --provider bedrock \
+            --max-turns 50 \
+            --thinking-budget 65536 \
+            "$PROMPT" 2>&1)
+          CLAUDE_EXIT=$?
+          set -e
+
+          echo "$CLAUDE_OUTPUT" > /tmp/claude_output.txt
+
+          if echo "$CLAUDE_OUTPUT" | grep -q "AUTOFIX_RESULT"; then
+            STATUS=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^status:" | head -1 | awk '{print $2}')
+            SUMMARY=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^summary:" | head -1 | sed 's/^summary: //')
+            ERROR_MSG=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^error:" | head -1 | sed 's/^error: //')
+            FILES_CHANGED=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^files_changed:" | head -1 | awk '{print $2}')
+            COMMITS=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^commits:" | head -1 | awk '{print $2}')
+            TEST_RESULT=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^test_result:" | head -1 | awk '{print $2}')
+          else
+            STATUS="failure"
+            SUMMARY="Claude Code did not produce structured output"
+            ERROR_MSG="No AUTOFIX_RESULT block found in output. Exit code: ${CLAUDE_EXIT}"
+            FILES_CHANGED="0"
+            COMMITS="0"
+            TEST_RESULT="skipped"
+          fi
+
+          echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+          echo "summary=${SUMMARY}" >> "$GITHUB_OUTPUT"
+          echo "error=${ERROR_MSG}" >> "$GITHUB_OUTPUT"
+          echo "files_changed=${FILES_CHANGED}" >> "$GITHUB_OUTPUT"
+          echo "commits=${COMMITS}" >> "$GITHUB_OUTPUT"
+          echo "test_result=${TEST_RESULT}" >> "$GITHUB_OUTPUT"
+
+      - name: Push branch and create PR
+        if: steps.claude.outputs.status == 'success'
+        id: pr
+        env:
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          SUMMARY: ${{ steps.claude.outputs.summary }}
+          FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
+          COMMITS: ${{ steps.claude.outputs.commits }}
+          TEST_RESULT: ${{ steps.claude.outputs.test_result }}
+        run: |
+          COMMIT_COUNT=$(git log main..HEAD --oneline | wc -l | xargs)
+          if [ "$COMMIT_COUNT" -eq 0 ]; then
+            echo "No commits to push."
+            echo "pr_created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git push -u origin "$BRANCH"
+
+          if [ "$ISSUE_TYPE" = "bug" ]; then
+            PR_TITLE="fix: ${SUMMARY}"
+          else
+            PR_TITLE="feat: ${SUMMARY}"
+          fi
+
+          PR_TITLE=$(echo "$PR_TITLE" | cut -c1-70)
+
+          PR_BODY=$(cat <<PR_EOF
+          ## Summary
+
+          ${SUMMARY}
+
+          Fixes #${ISSUE_NUM}
+
+          ## Details
+
+          - **Files changed:** ${FILES_CHANGED}
+          - **Commits:** ${COMMITS}
+          - **Tests:** ${TEST_RESULT}
+
+          ---
+          *Automated by gg:autofix*
+          PR_EOF
+          )
+
+          PR_URL=$(gh pr create \
+            --base "main" \
+            --head "$BRANCH" \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY")
+
+          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          echo "pr_created=true" >> "$GITHUB_OUTPUT"
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          gh pr edit "$PR_NUMBER" --add-label "autofix"
+
+      - name: Comment success on issue
+        if: steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          SUMMARY: ${{ steps.claude.outputs.summary }}
+          FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
+          COMMITS: ${{ steps.claude.outputs.commits }}
+          TEST_RESULT: ${{ steps.claude.outputs.test_result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          COMMENT=$(cat <<COMMENT_EOF
+          ## Autofix — PR Created
+
+          **PR:** ${PR_URL}
+          **Files changed:** ${FILES_CHANGED} | **Commits:** ${COMMITS} | **Tests:** ${TEST_RESULT}
+
+          ${SUMMARY}
+
+          ---
+          *Automated by gg:autofix | Workflow run: ${RUN_URL}*
+          COMMENT_EOF
+          )
+
+          gh issue comment "$ISSUE_NUM" --body "$COMMENT"
+          gh issue edit "$ISSUE_NUM" --add-label "autofix-success"
+
+      - name: Comment failure on issue
+        if: steps.claude.outputs.status != 'success' || (steps.pr.outputs.pr_created == 'false' && steps.claude.outputs.status == 'success')
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
+          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          SUMMARY: ${{ steps.claude.outputs.summary }}
+          ERROR_MSG: ${{ steps.claude.outputs.error }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          ATTEMPTED=""
+          if [ -f /tmp/claude_output.txt ]; then
+            ATTEMPTED=$(tail -50 /tmp/claude_output.txt | head -30)
+          fi
+
+          COMMENT=$(cat <<COMMENT_EOF
+          ## Autofix Report — Failed
+
+          **Issue:** #${ISSUE_NUM} — ${ISSUE_TITLE_INPUT}
+          **Type:** ${ISSUE_TYPE}
+          **Model:** ${ANTHROPIC_MODEL}
+
+          ### What was attempted
+
+          ${ATTEMPTED:-No output captured.}
+
+          ### Failure reason
+
+          ${ERROR_MSG:-${SUMMARY:-Unknown error}}
+
+          ### Suggested next steps
+
+          - Review the failure details above
+          - Add more context to the issue description if needed
+          - Run \`/autofix retry\` to try again
+          - Run \`/autofix model=<model-id>\` to try with a different model
+
+          ---
+          *Workflow run: ${RUN_URL} | Retry: \`/autofix retry\`*
+          COMMENT_EOF
+          )
+
+          gh issue comment "$ISSUE_NUM" --body "$COMMENT"
+          gh issue edit "$ISSUE_NUM" --add-label "autofix-failed"
+
+      - name: Clean up running label
+        if: always()
+        env:
+          ISSUE_NUM: ${{ needs.classify.outputs.issue_number || github.event.issue.number || github.event.inputs.issue_number }}
+        run: |
+          gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
