@@ -118,11 +118,26 @@ These mistakes have happened before. Learn from them:
    - A PreToolUse hook blocks commits on master/main, but verify your branch regardless
    - Real incident (PR #28): Screenshots were committed directly to master instead of the fix branch, requiring `git revert` to undo
 
-9. **Skipping linting before commits or PRs**
+9. **Using `run_in_background: true` for team agents**
+   - WRONG: `Agent` tool with `run_in_background: true` and relying on SendMessage for results
+   - RIGHT: Dispatch agents in foreground (default) — multiple agents in one message for parallelism
+   - Real incident (Invocation #5): 5 background agents completed reviews but all SendMessages were silently lost. Lead was idle and never received findings. Resume spawned new empty agents instead of reconnecting.
+
+10. **Skipping linting before commits or PRs**
    - WRONG: Run tests, see them pass, commit and open a PR without running the linter
    - RIGHT: Run `npm run lint` before committing. Fix any lint errors before pushing or opening a PR
    - Lint checks catch unused imports, type errors, and style violations that tests do not
    - Real incident: A PR shipped with an unused `vi` import in a test file. Tests passed but CI lint failed. Running `npm run lint` locally would have caught it instantly
+
+## Background Agent Limitations (CRITICAL)
+
+**NEVER use `run_in_background: true` when dispatching team agents.** Background agents' SendMessage calls are silently lost when the team lead is idle (not in an active processing turn). This causes complete loss of agent findings with no error or warning.
+
+**What happened:** All 5 review agents completed work and called SendMessage, but the lead was idle. Messages vanished. Resuming agents via `resume` parameter spawned new instances instead of reconnecting — original findings were unrecoverable.
+
+**The rule:** Always dispatch team agents in **foreground mode** (default). If you need parallelism, dispatch multiple foreground agents in a single message — the Agent tool supports this. The agents run concurrently and results are collected when all complete.
+
+**If you must use background agents** (rare, discouraged): Require agents to write findings to a file (e.g., `docs/reviews/<agent>-findings.md`) as their primary output, with SendMessage as a secondary notification. This way findings survive even if messages are lost.
 
 ## Autonomous Fix Policy
 
