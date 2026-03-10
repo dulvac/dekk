@@ -6,7 +6,7 @@
 <!-- gg:autofix-test-cmd=npm run test:run -->
 <!-- gg:autofix-timeout=30 -->
 <!-- gg:autofix-max-files=25 -->
-<!-- gg:autofix-thinking-budget=65536 -->
+<!-- gg:autofix-effort=high -->
 
 
 # Development Workflow

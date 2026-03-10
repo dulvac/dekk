@@ -301,7 +301,7 @@ jobs:
           CLAUDE_OUTPUT=$(claude --print \
             --model "$ANTHROPIC_MODEL" \
             --max-turns 50 \
-            --thinking-budget 65536 \
+            --effort high \
             "$PROMPT" 2>&1)
           CLAUDE_EXIT=$?
           set -e
