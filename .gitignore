@@ -4,3 +4,9 @@ dist-cli
 *.local
 .DS_Store
 .worktrees
+
+# Visual QA snapshots (ephemeral)
+.vqa/snapshots/
+
+# Playwright MCP logs
+.playwright-mcp/
