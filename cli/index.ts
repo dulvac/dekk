@@ -142,7 +142,7 @@ Examples:
 
 async function getVersion(): Promise<string> {
   const thisFile = fileURLToPath(import.meta.url)
-  const packageJsonPath = path.resolve(path.dirname(thisFile), '..', 'package.json')
+  const packageJsonPath = path.resolve(path.dirname(thisFile), 'package.json')
   const content = await readFile(packageJsonPath, 'utf-8')
   const pkg = JSON.parse(content) as { version: string }
   return pkg.version
@@ -252,7 +252,7 @@ async function handleServe(args: CliArgs): Promise<void> {
     source = new LocalSource(sourcePath)
   }
   const thisFile = fileURLToPath(import.meta.url)
-  const distDir = path.resolve(path.dirname(thisFile), '..', 'dist')
+  const distDir = path.resolve(path.dirname(thisFile), 'dist')
   const server = createServer(source, distDir, args.port)
 
   const url = `http://127.0.0.1:${args.port}`

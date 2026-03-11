@@ -34,7 +34,7 @@ Run these steps sequentially. Stop immediately if any step fails.
 
 9. **CLI E2E tests**: `npx playwright test --project=cli` — must pass.
 
-10. **Smoke test**: `node bin/dekk.js --version` — must print current version.
+10. **Smoke test**: `node dekk.js --version` — must print current version.
 
 ## Release Steps
 
