@@ -14,10 +14,6 @@ on:
         required: false
         type: string
 
-concurrency:
-  group: autofix-issue-${{ github.event.issue.number || github.event.inputs.issue_number }}
-  cancel-in-progress: false
-
 permissions:
   contents: write
   issues: write
@@ -171,6 +167,9 @@ jobs:
     if: needs.classify.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: autofix-fix-${{ needs.classify.outputs.issue_number }}
+      cancel-in-progress: true
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
