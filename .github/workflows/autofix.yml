@@ -353,7 +353,7 @@ jobs:
             exit 0
           fi
 
-          git push -u origin "$BRANCH"
+          git push -u --force-with-lease origin "$BRANCH"
 
           if [ "$ISSUE_TYPE" = "bug" ]; then
             PR_TITLE="fix: ${SUMMARY}"
