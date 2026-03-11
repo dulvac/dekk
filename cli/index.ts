@@ -217,7 +217,7 @@ async function handleServe(args: CliArgs): Promise<void> {
       await source.listDecks()
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401') || msg.includes('403')) {
+      if (msg.includes('401') || msg.includes('403') || msg.includes('404')) {
         console.log(`Authentication required for ${parsed.host}`)
         token = await promptForToken(parsed.host)
         await saveToken(parsed.host, token, 'cli-user')
