@@ -23,6 +23,21 @@ export interface CliArgs {
   logoutHost?: string
 }
 
+/**
+ * Determine whether an API error should trigger an auth prompt.
+ * GitHub returns 404 (not 401/403) for private repos when unauthenticated,
+ * so we treat 404 as auth-required only when no token is stored.
+ */
+export function shouldPromptForAuth(errorMessage: string, token: string | null | undefined): boolean {
+  if (errorMessage.includes('401') || errorMessage.includes('403')) {
+    return true
+  }
+  if (errorMessage.includes('404') && !token) {
+    return true
+  }
+  return false
+}
+
 export function parseArgs(argv: string[]): CliArgs {
   const args: CliArgs = {
     port: 3000,
@@ -217,7 +232,7 @@ async function handleServe(args: CliArgs): Promise<void> {
       await source.listDecks()
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('401') || msg.includes('403')) {
+      if (shouldPromptForAuth(msg, token)) {
         console.log(`Authentication required for ${parsed.host}`)
         token = await promptForToken(parsed.host)
         await saveToken(parsed.host, token, 'cli-user')

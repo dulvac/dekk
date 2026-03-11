@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseArgs } from '../index'
+import { parseArgs, shouldPromptForAuth } from '../index'
 
 describe('parseArgs', () => {
   it('parses local path argument', () => {
@@ -68,5 +68,31 @@ describe('parseArgs', () => {
 
   it('errors on no arguments', () => {
     expect(() => parseArgs([])).toThrow()
+  })
+})
+
+describe('shouldPromptForAuth', () => {
+  it('returns true for 401 error regardless of token', () => {
+    expect(shouldPromptForAuth('Failed to list decks: 401', null)).toBe(true)
+    expect(shouldPromptForAuth('Failed to list decks: 401', 'ghp_token')).toBe(true)
+  })
+
+  it('returns true for 403 error regardless of token', () => {
+    expect(shouldPromptForAuth('Failed to list decks: 403', null)).toBe(true)
+    expect(shouldPromptForAuth('Failed to list decks: 403', 'ghp_token')).toBe(true)
+  })
+
+  it('returns true for 404 error when no token is stored', () => {
+    expect(shouldPromptForAuth('Failed to list decks: 404', null)).toBe(true)
+    expect(shouldPromptForAuth('Failed to list decks: 404', undefined)).toBe(true)
+  })
+
+  it('returns false for 404 error when token is present', () => {
+    expect(shouldPromptForAuth('Failed to list decks: 404', 'ghp_token')).toBe(false)
+  })
+
+  it('returns false for other errors', () => {
+    expect(shouldPromptForAuth('Failed to list decks: 500', null)).toBe(false)
+    expect(shouldPromptForAuth('Network error', null)).toBe(false)
   })
 })
