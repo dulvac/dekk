@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "dekk": "./bin/dekk.js"
+    "dekk": "./dekk.js"
   },
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "build:cli": "esbuild cli/index.ts --bundle --platform=node --target=node22 --outfile=bin/dekk.js --format=esm --banner:js='#!/usr/bin/env node'"
+    "build:cli": "esbuild cli/index.ts --bundle --platform=node --target=node22 --outfile=dekk.js --format=esm --banner:js='#!/usr/bin/env node'"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.5.0",

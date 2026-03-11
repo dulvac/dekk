@@ -18,7 +18,7 @@ export default defineConfig({
       reuseExistingServer: !isCI,
     },
     {
-      command: 'node bin/dekk.js --port 3333 --no-open ./test-fixtures/presentations/',
+      command: 'node dekk.js --port 3333 --no-open ./test-fixtures/presentations/',
       url: 'http://127.0.0.1:3333',
       reuseExistingServer: false,
     },

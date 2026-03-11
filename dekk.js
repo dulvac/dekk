@@ -872,7 +872,7 @@ Examples:
   dekk --ref feature/new-talk https://github.com/org/repo`;
 async function getVersion() {
   const thisFile = fileURLToPath(import.meta.url);
-  const packageJsonPath = path2.resolve(path2.dirname(thisFile), "..", "package.json");
+  const packageJsonPath = path2.resolve(path2.dirname(thisFile), "package.json");
   const content = await readFile3(packageJsonPath, "utf-8");
   const pkg = JSON.parse(content);
   return pkg.version;
@@ -964,7 +964,7 @@ async function handleServe(args) {
     source = new LocalSource(sourcePath);
   }
   const thisFile = fileURLToPath(import.meta.url);
-  const distDir = path2.resolve(path2.dirname(thisFile), "..", "dist");
+  const distDir = path2.resolve(path2.dirname(thisFile), "dist");
   const server = createServer(source, distDir, args.port);
   const url = `http://127.0.0.1:${args.port}`;
   console.log(`Serving decks from ${args.source}`);

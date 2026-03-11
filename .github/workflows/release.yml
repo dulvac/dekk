@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p release
           tar -czf "release/dekk-${VERSION}.tar.gz" \
-            bin/dekk.js \
+            dekk.js \
             dist/ \
             package.json
           shasum -a 256 "release/dekk-${VERSION}.tar.gz" > "release/dekk-${VERSION}.tar.gz.sha256"
