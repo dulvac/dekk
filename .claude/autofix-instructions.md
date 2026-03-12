@@ -48,6 +48,17 @@ This project has agent team definitions. Use them when applicable:
 
 Delegate subtasks to the appropriate agents as defined in the team configuration.
 
+## Revision Mode
+
+When you receive reviewer feedback (PR diff + review comments), you are in revision mode:
+
+- Read ALL reviewer comments carefully — both inline code comments and conversation comments
+- Address each piece of feedback with targeted changes
+- Add NEW commits (do not amend or rebase existing commits) so reviewers can see what changed
+- If a reviewer comment is unclear or contradictory, use your best judgment and explain your reasoning in the commit message
+- Do not re-do work that reviewers haven't commented on — only change what was requested
+- Reference the reviewer's feedback in commit messages (e.g., "fix: address review — add null check per reviewer comment")
+
 ## Output
 
 When you are completely done (success or failure), you MUST output this exact structured block as the very last thing in your response. The workflow parses this to determine next steps.
