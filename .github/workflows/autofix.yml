@@ -177,7 +177,7 @@ jobs:
       !cancelled() &&
       (needs.classify.outputs.should_run == 'true' || github.event.inputs.pr_number != '')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     concurrency:
       group: autofix-fix-${{ needs.classify.outputs.issue_number || github.event.inputs.pr_number }}
       cancel-in-progress: true
