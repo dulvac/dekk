@@ -36,6 +36,54 @@ dekk --port 8080 --no-open ./talks                       # custom port, no auto-
 
 Run `dekk --help` for all options. Update with `dekk --update` or `brew upgrade dekk`.
 
+## Claude Code Plugin
+
+Dekk is also available as a Claude Code plugin. Install it to generate slide presentations from any project using the `/dekk` skill.
+
+### Install
+
+1. In Claude Code, run `/install-plugin`
+2. Add the marketplace: `dulvac/dekk`
+3. Install the **dekk** plugin
+4. Verify by typing `/dekk` — the skill should appear in autocomplete
+
+### Usage
+
+Generate a presentation on a specific topic:
+
+```
+/dekk "Introduction to GraphQL"
+```
+
+Or let it analyze your current project and generate a presentation about it:
+
+```
+/dekk
+```
+
+The skill will ask whether you want to tailor the presentation (audience, talk length, emphasis) or just generate immediately with sensible defaults.
+
+Output is a `slides.md` file placed in your project's presentations directory (auto-detected or created as `presentations/<slug>/slides.md`).
+
+### Preview Generated Slides
+
+```bash
+npx dekk ./presentations
+# or install globally:
+brew install dulvac/tap/dekk && dekk ./presentations
+```
+
+### Slide Format
+
+Slides use Dekk's markdown format:
+
+- **Frontmatter:** `---`-delimited block at the top with `title`, `author`, `date`
+- **Slide separators:** `---` on its own line
+- **Per-slide metadata:** HTML comment directives (`<!-- bg: #1a1a2e -->`)
+- **Content:** Standard markdown with GFM tables, fenced code blocks (Shiki highlighting), Mermaid diagrams, emoji shortcodes
+
+See `skills/dekk/SKILL.md` for the complete format reference.
+
 ## Quick Start (Development)
 
 ```bash
