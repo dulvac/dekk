@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "dekk",
+  "description": "Dekk slide presentation plugin for Claude Code",
+  "owner": {
+    "name": "Andrei Dulvac"
+  },
+  "plugins": [
+    {
+      "name": "dekk",
+      "description": "Generate Dekk-format slide presentations from any project",
+      "version": "0.1.0",
+      "source": "./",
+      "category": "development",
+      "strict": false
+    }
+  ]
+}
