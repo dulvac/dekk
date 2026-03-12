@@ -7,6 +7,7 @@
 <!-- gg:autofix-timeout=30 -->
 <!-- gg:autofix-max-files=25 -->
 <!-- gg:autofix-effort=high -->
+<!-- gg:autofix-max-revisions=5 -->
 
 
 # Development Workflow

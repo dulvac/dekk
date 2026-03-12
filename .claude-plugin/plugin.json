@@ -1,0 +1,8 @@
+{
+  "name": "dekk",
+  "description": "Generate Dekk-format slide presentations from any project",
+  "version": "0.1.0",
+  "author": {
+    "name": "Andrei Dulvac"
+  }
+}

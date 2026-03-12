@@ -13,6 +13,14 @@ on:
         description: 'Override the default Claude model (Bedrock model ID)'
         required: false
         type: string
+      max_turns_override:
+        description: 'Override the maximum number of agent turns (default: 100)'
+        required: false
+        type: number
+      pr_number:
+        description: 'PR number to revise (enables revision mode)'
+        required: false
+        type: number
 
 permissions:
   contents: write
@@ -25,8 +33,8 @@ jobs:
     # Only run when the 'autofix' label is applied (requires triage+ access),
     # or via manual workflow_dispatch (requires write access)
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.label.name == 'autofix'
+      !github.event.inputs.pr_number &&
+      (github.event_name == 'workflow_dispatch' || github.event.label.name == 'autofix')
     outputs:
       issue_type: ${{ steps.classify.outputs.issue_type }}
       issue_number: ${{ steps.classify.outputs.issue_number }}
@@ -164,11 +172,14 @@ jobs:
 
   fix:
     needs: classify
-    if: needs.classify.outputs.should_run == 'true'
+    if: >-
+      always() &&
+      !cancelled() &&
+      (needs.classify.outputs.should_run == 'true' || github.event.inputs.pr_number != '')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: autofix-fix-${{ needs.classify.outputs.issue_number }}
+      group: autofix-fix-${{ needs.classify.outputs.issue_number || github.event.inputs.pr_number }}
       cancel-in-progress: true
     env:
       CLAUDE_CODE_USE_BEDROCK: "1"
@@ -176,6 +187,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
       ANTHROPIC_MODEL: ${{ github.event.inputs.model_override || 'us.anthropic.claude-opus-4-6-v1' }}
+      CLAUDE_MAX_TURNS: ${{ github.event.inputs.max_turns_override || '100' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -188,13 +200,71 @@ jobs:
         run: |
           echo "::add-mask::${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}"
 
+      - name: Resolve and checkout PR branch (revision mode)
+        if: github.event.inputs.pr_number != ''
+        id: pr-branch
+        env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        run: |
+          HAS_LABEL=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' | grep -c '^autofix$' || true)
+          if [ "$HAS_LABEL" -eq 0 ]; then
+            echo "::error::PR #${PR_NUMBER} does not have the 'autofix' label. Skipping."
+            gh pr comment "$PR_NUMBER" --body "This PR was not created by autofix. The \`/autofix retry\` command only works on autofix-generated PRs."
+            exit 1
+          fi
+          PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q '.state')
+          if [ "$PR_STATE" != "OPEN" ]; then
+            echo "::error::PR #${PR_NUMBER} is not open (state: ${PR_STATE}). Skipping."
+            exit 1
+          fi
+          PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+          git checkout "$PR_BRANCH"
+          git pull origin "$PR_BRANCH"
+          echo "pr_branch=${PR_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Gather review context (revision mode)
+        if: github.event.inputs.pr_number != ''
+        id: review-context
+        env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          ISSUE_NUM: ${{ github.event.inputs.issue_number }}
+        run: |
+          REPO="${{ github.repository }}"
+          gh pr diff "$PR_NUMBER" > /tmp/pr_diff.txt
+          gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+            --jq '.[] | "File: \(.path):\(.line // .original_line)\nComment: \(.body)\n---"' \
+            > /tmp/review_comments.txt 2>/dev/null || echo "No inline comments." > /tmp/review_comments.txt
+          gh pr view "$PR_NUMBER" --comments --json comments \
+            --jq '.comments[] | "Author: \(.author.login)\n\(.body)\n---"' \
+            > /tmp/pr_comments.txt 2>/dev/null || echo "No PR comments." > /tmp/pr_comments.txt
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUM" --json title -q '.title' 2>/dev/null || echo "Unknown")
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUM" --json body -q '.body' 2>/dev/null || echo "No issue body available.")
+          echo "$ISSUE_TITLE" > /tmp/original_issue_title.txt
+          echo "$ISSUE_BODY" > /tmp/original_issue_body.txt
+          MAX_REVISIONS=$(grep -oE 'gg:autofix-max-revisions=[0-9]+' DEVELOPMENT.md | grep -oE '[0-9]+' || echo "5")
+          REVISION_ROUND=$(gh pr view "$PR_NUMBER" --comments --json comments \
+            --jq '[.comments[] | select(.body | startswith("## Autofix Revision"))] | length')
+          REVISION_ROUND=$((REVISION_ROUND + 1))
+          echo "revision_round=${REVISION_ROUND}" >> "$GITHUB_OUTPUT"
+          echo "max_revisions=${MAX_REVISIONS}" >> "$GITHUB_OUTPUT"
+          REVISION_WARNING=""
+          if [ "$REVISION_ROUND" -ge "$MAX_REVISIONS" ]; then
+            REVISION_WARNING="WARNING: This is revision round ${REVISION_ROUND}, at or beyond the configured limit of ${MAX_REVISIONS}. Consider whether this PR needs human intervention."
+            gh pr comment "$PR_NUMBER" --body "> **Warning:** This is revision round ${REVISION_ROUND}, at or beyond the configured limit of ${MAX_REVISIONS}. Consider whether this PR needs human intervention."
+          fi
+          echo "$REVISION_WARNING" > /tmp/revision_warning.txt
+
       - name: Add autofix-running label
+        if: github.event.inputs.pr_number == ''
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
         run: |
           gh issue edit "$ISSUE_NUM" --add-label "autofix-running"
 
       - name: Check for existing autofix PR
+        if: github.event.inputs.pr_number == ''
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
         run: |
@@ -206,6 +276,7 @@ jobs:
           fi
 
       - name: Create feature branch
+        if: github.event.inputs.pr_number == ''
         id: branch
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
@@ -277,12 +348,57 @@ jobs:
       - name: Run Claude Code
         id: claude
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
-          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
-          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
           ISSUE_BODY_INPUT: ${{ needs.classify.outputs.issue_body }}
         run: |
-          PROMPT=$(cat <<PROMPT_EOF
+          AUTOFIX_INSTRUCTIONS=$(cat .claude/autofix-instructions.md 2>/dev/null || echo "No autofix instructions found.")
+
+          IS_REVISION="${{ github.event.inputs.pr_number }}"
+
+          if [ -n "$IS_REVISION" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+            ISSUE_NUM="${{ github.event.inputs.issue_number }}"
+            ISSUE_TITLE=$(cat /tmp/original_issue_title.txt)
+            ISSUE_BODY=$(cat /tmp/original_issue_body.txt)
+            PR_DIFF=$(cat /tmp/pr_diff.txt | head -c 50000)
+            REVIEW_COMMENTS=$(cat /tmp/review_comments.txt | head -c 20000)
+            PR_COMMENTS=$(cat /tmp/pr_comments.txt | head -c 20000)
+            REVISION_ROUND="${{ steps.review-context.outputs.revision_round }}"
+            MAX_REVISIONS="${{ steps.review-context.outputs.max_revisions }}"
+            REVISION_WARNING=$(cat /tmp/revision_warning.txt)
+
+            PROMPT=$(cat <<PROMPT_EOF
+          You are revising PR #${PR_NUMBER} based on reviewer feedback.
+
+          **Original issue:** #${ISSUE_NUM} — ${ISSUE_TITLE}
+          ${ISSUE_BODY}
+
+          **Your previous changes (PR diff):**
+          ${PR_DIFF}
+
+          **Reviewer feedback (inline comments):**
+          ${REVIEW_COMMENTS}
+
+          **Reviewer feedback (PR comments):**
+          ${PR_COMMENTS}
+
+          --- AUTOFIX INSTRUCTIONS ---
+          ${AUTOFIX_INSTRUCTIONS}
+          --- END AUTOFIX INSTRUCTIONS ---
+
+          Read the reviewer feedback carefully. Make the requested changes by adding NEW commits
+          (do not rewrite history). If feedback is contradictory or unclear, use your best judgment
+          and explain your reasoning in the commit message.
+
+          This is revision round ${REVISION_ROUND} of ${MAX_REVISIONS}.
+          ${REVISION_WARNING}
+          PROMPT_EOF
+          )
+          else
+            ISSUE_NUM="${{ needs.classify.outputs.issue_number }}"
+            ISSUE_TYPE="${{ needs.classify.outputs.issue_type }}"
+            ISSUE_TITLE_INPUT="${{ needs.classify.outputs.issue_title }}"
+
+            PROMPT=$(cat <<PROMPT_EOF
           You are resolving GitHub issue #${ISSUE_NUM}.
 
           **Issue type:** ${ISSUE_TYPE}
@@ -290,25 +406,29 @@ jobs:
           **Body:**
           ${ISSUE_BODY_INPUT}
 
-          Follow the instructions in .claude/autofix-instructions.md.
+          --- AUTOFIX INSTRUCTIONS ---
+          ${AUTOFIX_INSTRUCTIONS}
+          --- END AUTOFIX INSTRUCTIONS ---
+
           Read CLAUDE.md, AGENTS.md, and DEVELOPMENT.md for project conventions.
 
-          Implement the fix or feature, commit your changes, and output the AUTOFIX_RESULT block as specified in the instructions.
+          Implement the fix or feature, commit your changes, and output the AUTOFIX_RESULT block as specified in the instructions above.
           PROMPT_EOF
           )
+          fi
 
           set +e
-          CLAUDE_OUTPUT=$(claude --print \
+          claude --print \
             --model "$ANTHROPIC_MODEL" \
-            --max-turns 50 \
+            --max-turns "$CLAUDE_MAX_TURNS" \
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(*),NotebookEdit,Agent,mcp__context7__*,mcp__playwright__*" \
             --effort high \
-            "$PROMPT" 2>&1)
-          CLAUDE_EXIT=$?
+            "$PROMPT" 2>&1 | tee /tmp/claude_output.txt
+          CLAUDE_EXIT=${PIPESTATUS[0]}
           set -e
 
           echo "$PROMPT" > /tmp/claude_prompt.txt
-          echo "$CLAUDE_OUTPUT" > /tmp/claude_output.txt
+          CLAUDE_OUTPUT=$(cat /tmp/claude_output.txt)
 
           if echo "$CLAUDE_OUTPUT" | grep -q "AUTOFIX_RESULT"; then
             STATUS=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^status:" | head -1 | awk '{print $2}')
@@ -345,6 +465,26 @@ jobs:
           COMMITS: ${{ steps.claude.outputs.commits }}
           TEST_RESULT: ${{ steps.claude.outputs.test_result }}
         run: |
+          IS_REVISION="${{ github.event.inputs.pr_number }}"
+
+          if [ -n "$IS_REVISION" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+            PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+
+            COMMIT_COUNT=$(git log origin/${PR_BRANCH}..HEAD --oneline | wc -l | xargs)
+            if [ "$COMMIT_COUNT" -eq 0 ]; then
+              echo "No new commits to push."
+              echo "pr_created=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            git push origin "$PR_BRANCH"
+            echo "pr_url=$(gh pr view "$PR_NUMBER" --json url -q '.url')" >> "$GITHUB_OUTPUT"
+            echo "pr_created=true" >> "$GITHUB_OUTPUT"
+            echo "is_revision=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           COMMIT_COUNT=$(git log main..HEAD --oneline | wc -l | xargs)
           if [ "$COMMIT_COUNT" -eq 0 ]; then
             echo "No commits to push."
@@ -393,7 +533,7 @@ jobs:
           gh pr edit "$PR_NUMBER" --add-label "autofix"
 
       - name: Comment success on issue
-        if: steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
+        if: github.event.inputs.pr_number == '' && steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
           PR_URL: ${{ steps.pr.outputs.pr_url }}
@@ -420,7 +560,7 @@ jobs:
           gh issue edit "$ISSUE_NUM" --add-label "autofix-success"
 
       - name: Comment failure on issue
-        if: steps.claude.outputs.status != 'success' || (steps.pr.outputs.pr_created == 'false' && steps.claude.outputs.status == 'success')
+        if: github.event.inputs.pr_number == '' && (steps.claude.outputs.status != 'success' || (steps.pr.outputs.pr_created == 'false' && steps.claude.outputs.status == 'success'))
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
           ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
@@ -465,6 +605,70 @@ jobs:
           gh issue edit "$ISSUE_NUM" --add-label "autofix-failed"
           exit 1
 
+      - name: Comment revision summary on PR
+        if: github.event.inputs.pr_number != '' && steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          SUMMARY: ${{ steps.claude.outputs.summary }}
+          FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
+          COMMITS: ${{ steps.claude.outputs.commits }}
+          TEST_RESULT: ${{ steps.claude.outputs.test_result }}
+          REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          COMMENT=$(cat <<COMMENT_EOF
+          ## Autofix Revision — Round ${REVISION_ROUND}
+
+          **Files changed:** ${FILES_CHANGED} | **New commits:** ${COMMITS} | **Tests:** ${TEST_RESULT}
+
+          ${SUMMARY}
+
+          ---
+          *Automated by gg:autofix | Workflow run: ${RUN_URL}*
+          COMMENT_EOF
+          )
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+
+      - name: Comment revision failure on PR
+        if: github.event.inputs.pr_number != '' && steps.claude.outputs.status != 'success'
+        env:
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          SUMMARY: ${{ steps.claude.outputs.summary }}
+          ERROR_MSG: ${{ steps.claude.outputs.error }}
+          REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          ATTEMPTED=""
+          if [ -f /tmp/claude_output.txt ]; then
+            ATTEMPTED=$(tail -50 /tmp/claude_output.txt | head -30)
+          fi
+
+          COMMENT=$(cat <<COMMENT_EOF
+          ## Autofix Revision — Round ${REVISION_ROUND} — Failed
+
+          ### What was attempted
+
+          ${ATTEMPTED:-No output captured.}
+
+          ### Failure reason
+
+          ${ERROR_MSG:-${SUMMARY:-Unknown error}}
+
+          ### Suggested next steps
+
+          - Review the failure details above
+          - Add more specific feedback in a review comment
+          - Run \`/autofix retry\` to try again
+          - Consider making the changes manually
+
+          ---
+          *Workflow run: ${RUN_URL} | Retry: \`/autofix retry\`*
+          COMMENT_EOF
+          )
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+
       - name: Upload Claude logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -477,7 +681,7 @@ jobs:
           retention-days: 30
 
       - name: Clean up running label
-        if: always()
+        if: always() && github.event.inputs.pr_number == ''
         env:
           ISSUE_NUM: ${{ needs.classify.outputs.issue_number || github.event.issue.number || github.event.inputs.issue_number }}
         run: |
