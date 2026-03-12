@@ -68,12 +68,13 @@ jobs:
           REVIEW_BODY: ${{ github.event.review.body }}
           ISSUE_NUM: ${{ github.event.issue.number }}
           PR_NUM: ${{ github.event.pull_request.number }}
+          IS_PR_COMMENT: ${{ github.event.issue.pull_request.url && 'true' || 'false' }}
         run: |
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
             BODY="$COMMENT_BODY"
-            if [ -n "$PR_NUM" ]; then
+            if [ "$IS_PR_COMMENT" = "true" ]; then
               echo "is_pr=true" >> "$GITHUB_OUTPUT"
-              echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+              echo "pr_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
               echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
             else
               echo "is_pr=false" >> "$GITHUB_OUTPUT"
@@ -92,14 +93,12 @@ jobs:
             echo "command=cancel" >> "$GITHUB_OUTPUT"
           elif echo "$BODY" | grep -qE '/autofix status'; then
             echo "command=status" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE '/autofix model=\S+'; then
-            MODEL=$(echo "$BODY" | sed -n 's|.*/autofix model=\([^ ]*\).*|\1|p')
+          elif echo "$BODY" | grep -qE '/autofix (model=|turns=)'; then
+            MODEL=$(echo "$BODY" | sed -n 's|.*/autofix.*model=\([^ ]*\).*|\1|p')
+            TURNS=$(echo "$BODY" | sed -n 's|.*/autofix.*turns=\([^ ]*\).*|\1|p')
             echo "command=retry" >> "$GITHUB_OUTPUT"
-            echo "model_override=${MODEL}" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE '/autofix turns=[0-9]+'; then
-            TURNS=$(echo "$BODY" | sed -n 's|.*/autofix turns=\([0-9]*\).*|\1|p')
-            echo "command=retry" >> "$GITHUB_OUTPUT"
-            echo "turns_override=${TURNS}" >> "$GITHUB_OUTPUT"
+            [ -n "$MODEL" ] && echo "model_override=${MODEL}" >> "$GITHUB_OUTPUT"
+            [ -n "$TURNS" ] && echo "turns_override=${TURNS}" >> "$GITHUB_OUTPUT"
           else
             echo "command=unknown" >> "$GITHUB_OUTPUT"
           fi
@@ -144,7 +143,9 @@ jobs:
 
           gh workflow run autofix.yml $DISPATCH_ARGS
 
-          if [ "$IS_PR" != "true" ]; then
+          if [ "$IS_PR" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --remove-label "autofix-failed" 2>/dev/null || true
+          else
             gh issue edit "$ISSUE_NUM" --remove-label "autofix-failed" 2>/dev/null || true
           fi
 
