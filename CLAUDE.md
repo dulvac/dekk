@@ -65,6 +65,14 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for full conventions (commits, branches, wo
 - No light mode - dark theme is the brand identity
 - Run `npm run lint` before every commit — lint errors must be fixed before pushing or opening PRs
 
+## Slide Format & Plugin Skill Sync
+
+The `/dekk` skill at `skills/dekk/SKILL.md` contains a complete copy of the Dekk slide format spec. When modifying:
+- `src/core/parser.ts` (frontmatter keys, slide metadata keys, separator logic)
+- Slide rendering features (new markdown extensions, new directive types)
+
+You MUST also update `skills/dekk/SKILL.md` to reflect the changes. A sync test at `skills/__tests__/skill-format-sync.test.ts` validates that all typed parser interface keys are documented in the skill. Run `npm run test:run` to catch drift.
+
 ## Quality Standards
 
 - **Functional Testing**: Unit and E2E tests must pass (Vitest + Playwright)
