@@ -342,6 +342,9 @@ jobs:
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code@latest
 

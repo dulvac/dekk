@@ -185,7 +185,7 @@ test.describe('Navigation Controls', () => {
 
     // The controls container uses opacity for show/hide.
     // Playwright's toBeHidden does not detect parent opacity:0, so we assert CSS directly.
-    const controlsContainer = page.locator('[class*="controls"][class*="hidden"], [class*="controls"][class*="visible"]').first()
+    const controlsContainer = page.locator('[class*="controls"]').first()
 
     // Initially controls should be hidden (opacity: 0)
     await expect(controlsContainer).toHaveCSS('opacity', '0')

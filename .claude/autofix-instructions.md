@@ -31,10 +31,11 @@ Your job is to produce a complete fix or implementation and commit it.
 
 ## Testing
 
-- Run `npm run test:run` before finalizing your changes
+- Run `npm run test:run` (unit tests) before finalizing your changes
+- Run `npm run build -- --base /dekk/ && npx playwright test --project=chromium` (E2E tests) after unit tests pass
 - If tests fail, analyze the failure, fix the issue, and re-run (up to 3 attempts)
 - If tests still fail after 3 attempts, stop and report what you tried — set status to failure
-- Include the test result in your AUTOFIX_RESULT output
+- Include the test result in your AUTOFIX_RESULT output (report "passed" only if BOTH unit and E2E tests pass)
 
 ## Agent Strategy
 
