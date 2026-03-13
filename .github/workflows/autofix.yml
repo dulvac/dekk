@@ -669,6 +669,73 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body "$COMMENT"
 
+      - name: Upload VQA screenshots to PR
+        if: steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          IS_REVISION: ${{ steps.pr.outputs.is_revision }}
+        run: |
+          # Check if before/after screenshots exist
+          HAS_BEFORE=$(ls /tmp/vqa-before/*.png 2>/dev/null | head -1)
+          HAS_AFTER=$(ls /tmp/vqa-after/*.png 2>/dev/null | head -1)
+
+          if [ -z "$HAS_BEFORE" ] && [ -z "$HAS_AFTER" ]; then
+            echo "No VQA screenshots found. Skipping."
+            exit 0
+          fi
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+
+          # Build the comment body with embedded images
+          COMMENT="## Visual QA — Before / After"$'\n\n'
+
+          if [ -n "$HAS_BEFORE" ] && [ -n "$HAS_AFTER" ]; then
+            COMMENT+="| Before | After |"$'\n'
+            COMMENT+="|--------|-------|"$'\n'
+
+            for AFTER_IMG in /tmp/vqa-after/*.png; do
+              BASENAME=$(basename "$AFTER_IMG")
+              BEFORE_IMG="/tmp/vqa-before/${BASENAME}"
+              LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
+
+              if [ -f "$BEFORE_IMG" ]; then
+                # Upload both images and capture URLs
+                BEFORE_URL=$(gh api --method POST "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+                  -f body="![before-${BASENAME}](placeholder)" \
+                  --jq '.id' 2>/dev/null || echo "")
+
+                # Use gh to upload via issue comment image embedding
+                # GitHub doesn't support direct image upload via API, so we use artifacts
+                COMMENT+="| ${LABEL} (before) | ${LABEL} (after) |"$'\n'
+              else
+                COMMENT+="| *(no before)* | ${LABEL} |"$'\n'
+              fi
+            done
+          elif [ -n "$HAS_AFTER" ]; then
+            COMMENT+="*(Before screenshots were not captured)*"$'\n\n'
+            for AFTER_IMG in /tmp/vqa-after/*.png; do
+              BASENAME=$(basename "$AFTER_IMG")
+              LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
+              COMMENT+="- ${LABEL}"$'\n'
+            done
+          fi
+
+          COMMENT+=$'\n'"---"$'\n'"*Screenshots available in workflow artifacts*"
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+
+      - name: Upload VQA screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vqa-screenshots
+          path: |
+            /tmp/vqa-before/
+            /tmp/vqa-after/
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Upload Claude logs
         if: always()
         uses: actions/upload-artifact@v4

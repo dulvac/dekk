@@ -48,6 +48,43 @@ This project has agent team definitions. Use them when applicable:
 
 Delegate subtasks to the appropriate agents as defined in the team configuration.
 
+## Visual QA (UI changes only)
+
+When the issue involves UI changes (CSS, layout, components, visual bugs, styling, new UI features), you MUST perform visual QA with before/after screenshots:
+
+### Workflow
+
+1. **Detect UI relevance**: Check if the issue title, body, or labels mention visual/UI keywords (button, modal, layout, CSS, style, component, responsive, form, navbar, sidebar, footer, header, card, dialog, toast, tooltip, animation, theme, color, font, padding, margin, spacing, grid, flex, redesign, visual bug, UX).
+
+2. **Capture "before" screenshots**: Before making any code changes:
+   - Start the dev server: `npm run dev &` (background it, wait for it to be ready)
+   - Use Playwright MCP tools to navigate to the affected pages and take screenshots
+   - Key routes: `http://localhost:5173` (picker), `http://localhost:5173/#deck/{id}/{n}` (presentation), `http://localhost:5173/#deck/{id}/editor` (editor), `http://localhost:5173/#deck/{id}/overview` (overview)
+   - Capture at desktop (1440x900) viewport at minimum; include tablet (768x1024) and mobile (375x812) if the issue is responsive-related
+   - Save screenshots to `/tmp/vqa-before/` with descriptive names
+
+3. **Make your code changes** and commit them as normal.
+
+4. **Capture "after" screenshots**: After changes are complete:
+   - Restart the dev server if needed (kill old process, start fresh)
+   - Navigate to the same pages and take screenshots at the same viewports
+   - Save screenshots to `/tmp/vqa-after/` with matching names
+
+5. **Analyze the diff**: Compare before/after screenshots visually. Verify:
+   - The fix addresses the reported issue
+   - No regressions in layout, spacing, or contrast
+   - Text remains readable, interactive elements are accessible
+
+6. **Include in PR**: When the PR is created, the screenshots should be referenced. To include them, upload the before/after images as part of your output. Add a section to your summary noting that visual QA was performed.
+
+### Screenshot naming convention
+
+Use descriptive names: `{view}-{viewport}.png` (e.g., `picker-desktop.png`, `editor-mobile.png`).
+
+### If Playwright is unavailable
+
+If MCP Playwright tools are not available in the CI environment, skip visual QA and note `visual_qa: skipped (no Playwright)` in your output. Do not fail the run because of this.
+
 ## Revision Mode
 
 When you receive reviewer feedback (PR diff + review comments), you are in revision mode:
