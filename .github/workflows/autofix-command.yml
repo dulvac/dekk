@@ -72,6 +72,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
             BODY="$COMMENT_BODY"
+            GREP_PREFIX="^"
             if [ "$IS_PR_COMMENT" = "true" ]; then
               echo "is_pr=true" >> "$GITHUB_OUTPUT"
               echo "pr_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
@@ -82,23 +83,24 @@ jobs:
             fi
           else
             BODY="$REVIEW_BODY"
+            GREP_PREFIX=""
             echo "is_pr=true" >> "$GITHUB_OUTPUT"
             echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
             echo "issue_number=" >> "$GITHUB_OUTPUT"
           fi
 
-          if echo "$BODY" | grep -qE '/autofix retry'; then
+          if echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix retry"; then
             echo "command=retry" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE '/autofix cancel'; then
+          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix cancel"; then
             echo "command=cancel" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE '/autofix status'; then
+          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix status"; then
             echo "command=status" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE '/autofix (model=|turns=)'; then
+          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix (model=|turns=)"; then
             MODEL=$(echo "$BODY" | sed -n 's|.*/autofix.*model=\([^ ]*\).*|\1|p')
             TURNS=$(echo "$BODY" | sed -n 's|.*/autofix.*turns=\([^ ]*\).*|\1|p')
             echo "command=retry" >> "$GITHUB_OUTPUT"
             [ -n "$MODEL" ] && echo "model_override=${MODEL}" >> "$GITHUB_OUTPUT"
-            [ -n "$TURNS" ] && echo "turns_override=${TURNS}" >> "$GITHUB_OUTPUT"
+            [ -n "$TURNS" ] && echo "max_turns_override=${TURNS}" >> "$GITHUB_OUTPUT"
           else
             echo "command=unknown" >> "$GITHUB_OUTPUT"
           fi
@@ -108,7 +110,7 @@ jobs:
         env:
           ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
           MODEL_OVERRIDE: ${{ steps.parse.outputs.model_override }}
-          TURNS_OVERRIDE: ${{ steps.parse.outputs.turns_override }}
+          TURNS_OVERRIDE: ${{ steps.parse.outputs.max_turns_override }}
           IS_PR: ${{ steps.parse.outputs.is_pr }}
           PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
           REPO: ${{ github.repository }}
