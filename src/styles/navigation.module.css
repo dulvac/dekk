@@ -63,13 +63,8 @@
   transition: opacity 200ms var(--mp-transition-ease);
 }
 
-.controls.visible {
-  pointer-events: auto;
-}
-
 .controls.hidden {
   opacity: 0;
-  pointer-events: none;
 }
 
 .arrowLeft,

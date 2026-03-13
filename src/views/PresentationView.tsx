@@ -56,7 +56,7 @@ export function PresentationView({ route, setRoute }: PresentationViewProps) {
       <SlideFrame className={styles.slideTransition} style={{ backgroundColor }}>
         <SlideRenderer slide={currentSlide} />
       </SlideFrame>
-      <SlideNavigation currentIndex={currentIndex} totalSlides={slides.length} />
+      <SlideNavigation currentIndex={currentIndex} totalSlides={slides.length} visible={visible} />
       <NavigationControls
         visible={visible}
         onOverview={() => {
