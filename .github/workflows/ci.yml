@@ -48,17 +48,21 @@ jobs:
       - name: Run E2E tests (chromium project - GitHub Pages build)
         run: npx playwright test --project=chromium
 
-      - name: Rebuild SPA for CLI tests (no base prefix)
-        run: npm run build
-
-      - name: Run E2E tests (CLI project)
-        run: npx playwright test --project=cli
-
+      # Upload Pages artifact BEFORE the CLI rebuild below, which overwrites
+      # dist/ with a build that has no --base prefix (breaking Pages routing).
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist/
+
+      # CLI tests need a plain build (no --base /dekk/), so rebuild here.
+      # This overwrites dist/ but the Pages artifact is already captured above.
+      - name: Rebuild SPA for CLI tests (no base prefix)
+        run: npm run build
+
+      - name: Run E2E tests (CLI project)
+        run: npx playwright test --project=cli
 
   deploy:
     needs: build-and-test
