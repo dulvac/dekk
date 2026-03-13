@@ -40,6 +40,7 @@ jobs:
       issue_number: ${{ steps.classify.outputs.issue_number }}
       issue_title: ${{ steps.classify.outputs.issue_title }}
       issue_body: ${{ steps.classify.outputs.issue_body }}
+      is_visual: ${{ steps.classify.outputs.is_visual }}
       should_run: ${{ steps.classify.outputs.should_run }}
     steps:
       - name: Checkout repository
@@ -156,6 +157,7 @@ jobs:
             echo "Issue classified as feature, but scope is bugs-only. Skipping."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
+            echo "is_visual=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -163,10 +165,22 @@ jobs:
             echo "Issue classified as skip. Not actionable."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
+            echo "is_visual=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "Issue classified as: ${ISSUE_TYPE}"
+          # Detect if issue involves visual/UI changes
+          IS_VISUAL="false"
+          if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(ui|ux|visual|css|style|design|frontend|layout)(,|$)'; then
+            IS_VISUAL="true"
+          elif echo "$ISSUE_TITLE_INPUT" | grep -iqE '\b(ui|ux|visual|css|style|layout|button|modal|dialog|responsive|font|color|theme|sidebar|navbar|header|footer|card|toast|tooltip|animation|spacing|padding|margin)\b'; then
+            IS_VISUAL="true"
+          elif cat /tmp/issue_body.txt | head -c 2000 | grep -iqE '\b(screenshot|visual|looks wrong|layout broken|misaligned|pixel|render|display issue|styling|css)\b'; then
+            IS_VISUAL="true"
+          fi
+          echo "is_visual=${IS_VISUAL}" >> "$GITHUB_OUTPUT"
+
+          echo "Issue classified as: ${ISSUE_TYPE} (visual: ${IS_VISUAL})"
           echo "issue_type=${ISSUE_TYPE}" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
@@ -401,6 +415,13 @@ jobs:
             ISSUE_TYPE="${{ needs.classify.outputs.issue_type }}"
             ISSUE_TITLE_INPUT="${{ needs.classify.outputs.issue_title }}"
 
+            IS_VISUAL="${{ needs.classify.outputs.is_visual }}"
+            VISUAL_HINT=""
+            if [ "$IS_VISUAL" = "true" ]; then
+              VISUAL_HINT="
+          **This issue has been classified as visual/UI-related.** Follow the Visual QA instructions in the autofix instructions below. Capture before-state screenshots BEFORE making changes, then capture after-state screenshots AFTER changes are complete. Save all screenshots to the paths specified in the instructions."
+            fi
+
             PROMPT=$(cat <<PROMPT_EOF
           You are resolving GitHub issue #${ISSUE_NUM}.
 
@@ -408,6 +429,7 @@ jobs:
           **Title:** ${ISSUE_TITLE_INPUT}
           **Body:**
           ${ISSUE_BODY_INPUT}
+          ${VISUAL_HINT}
 
           --- AUTOFIX INSTRUCTIONS ---
           ${AUTOFIX_INSTRUCTIONS}
@@ -672,14 +694,13 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body "$COMMENT"
 
-      - name: Upload VQA screenshots to PR
+      - name: Comment VQA screenshots on PR
         if: steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
           PR_URL: ${{ steps.pr.outputs.pr_url }}
           IS_REVISION: ${{ steps.pr.outputs.is_revision }}
         run: |
-          # Check if before/after screenshots exist
           HAS_BEFORE=$(ls /tmp/vqa-before/*.png 2>/dev/null | head -1)
           HAS_AFTER=$(ls /tmp/vqa-after/*.png 2>/dev/null | head -1)
 
@@ -690,12 +711,11 @@ jobs:
 
           PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
 
-          # Build the comment body with embedded images
-          COMMENT="## Visual QA — Before / After"$'\n\n'
+          COMMENT="## Visual QA — Before / After\n\n"
 
           if [ -n "$HAS_BEFORE" ] && [ -n "$HAS_AFTER" ]; then
-            COMMENT+="| Before | After |"$'\n'
-            COMMENT+="|--------|-------|"$'\n'
+            COMMENT+="| Page | Before | After |\n"
+            COMMENT+="|------|--------|-------|\n"
 
             for AFTER_IMG in /tmp/vqa-after/*.png; do
               BASENAME=$(basename "$AFTER_IMG")
@@ -703,30 +723,23 @@ jobs:
               LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
 
               if [ -f "$BEFORE_IMG" ]; then
-                # Upload both images and capture URLs
-                BEFORE_URL=$(gh api --method POST "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
-                  -f body="![before-${BASENAME}](placeholder)" \
-                  --jq '.id' 2>/dev/null || echo "")
-
-                # Use gh to upload via issue comment image embedding
-                # GitHub doesn't support direct image upload via API, so we use artifacts
-                COMMENT+="| ${LABEL} (before) | ${LABEL} (after) |"$'\n'
+                COMMENT+="| ${LABEL} | before | after |\n"
               else
-                COMMENT+="| *(no before)* | ${LABEL} |"$'\n'
+                COMMENT+="| ${LABEL} | *(no before)* | after |\n"
               fi
             done
           elif [ -n "$HAS_AFTER" ]; then
-            COMMENT+="*(Before screenshots were not captured)*"$'\n\n'
+            COMMENT+="*(Before screenshots were not captured)*\n\n"
             for AFTER_IMG in /tmp/vqa-after/*.png; do
               BASENAME=$(basename "$AFTER_IMG")
               LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
-              COMMENT+="- ${LABEL}"$'\n'
+              COMMENT+="- ${LABEL}\n"
             done
           fi
 
-          COMMENT+=$'\n'"---"$'\n'"*Screenshots available in workflow artifacts*"
+          COMMENT+="\n---\n*Screenshots available in [workflow artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
 
-          gh pr comment "$PR_NUMBER" --body "$COMMENT"
+          echo -e "$COMMENT" | gh pr comment "$PR_NUMBER" --body-file -
 
       - name: Upload VQA screenshots
         if: always()

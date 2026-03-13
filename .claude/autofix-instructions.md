@@ -4,7 +4,7 @@
 <!-- gg:autofix-scope=all -->
 <!-- gg:autofix-model=us.anthropic.claude-opus-4-6-v1 -->
 <!-- gg:autofix-test=true -->
-<!-- gg:autofix-test-cmd=npm run test:run -->
+<!-- gg:autofix-test-cmd=npm run test:run && npm run build -- --base /dekk/ && npx playwright test --project=chromium -->
 <!-- gg:autofix-timeout=60 -->
 <!-- gg:autofix-max-files=50 -->
 
@@ -76,7 +76,7 @@ When the issue involves UI changes (CSS, layout, components, visual bugs, stylin
    - No regressions in layout, spacing, or contrast
    - Text remains readable, interactive elements are accessible
 
-6. **Include in PR**: When the PR is created, the screenshots should be referenced. To include them, upload the before/after images as part of your output. Add a section to your summary noting that visual QA was performed.
+6. **Include in PR**: The workflow automatically uploads screenshots as artifacts and comments on the PR.
 
 ### Screenshot naming convention
 
