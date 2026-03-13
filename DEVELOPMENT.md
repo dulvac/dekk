@@ -3,7 +3,7 @@
 <!-- gg:autofix-scope=all -->
 <!-- gg:autofix-model=us.anthropic.claude-opus-4-6-v1 -->
 <!-- gg:autofix-test=true -->
-<!-- gg:autofix-test-cmd=npm run test:run -->
+<!-- gg:autofix-test-cmd=npm run test:run && npm run build -- --base /dekk/ && npx playwright test --project=chromium -->
 <!-- gg:autofix-timeout=60 -->
 <!-- gg:autofix-max-files=50 -->
 <!-- gg:autofix-effort=high -->

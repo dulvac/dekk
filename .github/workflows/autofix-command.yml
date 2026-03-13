@@ -27,27 +27,31 @@ jobs:
       - name: Check permissions
         id: perms
         env:
+          COMMENTER_FROM_COMMENT: ${{ github.event.comment.user.login }}
+          COMMENTER_FROM_REVIEW: ${{ github.event.review.user.login }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID_FROM_COMMENT: ${{ github.event.comment.id }}
+          REVIEW_ID_FROM_REVIEW: ${{ github.event.review.id }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-          COMMENT_USER: ${{ github.event.comment.user.login }}
-          COMMENT_ID: ${{ github.event.comment.id }}
-          REVIEW_USER: ${{ github.event.review.user.login }}
-          REVIEW_ID: ${{ github.event.review.id }}
         run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            COMMENTER="$COMMENT_USER"
-            REACTION_TARGET="repos/${REPO}/issues/comments/${COMMENT_ID}/reactions"
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            COMMENTER="$COMMENTER_FROM_REVIEW"
           else
-            COMMENTER="$REVIEW_USER"
-            REACTION_TARGET="repos/${REPO}/pulls/comments/${REVIEW_ID}/reactions"
+            COMMENTER="$COMMENTER_FROM_COMMENT"
           fi
-
-          echo "reaction_target=${REACTION_TARGET}" >> "$GITHUB_OUTPUT"
 
           PERMISSION=$(gh api "repos/${REPO}/collaborators/${COMMENTER}/permission" -q '.permission')
 
           if [ "$PERMISSION" != "admin" ] && [ "$PERMISSION" != "write" ] && [ "$PERMISSION" != "maintain" ]; then
             echo "User ${COMMENTER} has '${PERMISSION}' permission. Write access required."
-            gh api "${REACTION_TARGET}" -f content='-1' --silent
+            if [ "$EVENT_NAME" = "pull_request_review" ]; then
+              gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID_FROM_REVIEW}/reactions" \
+                -f content='-1' --silent 2>/dev/null || true
+            else
+              gh api "repos/${REPO}/issues/comments/${COMMENT_ID_FROM_COMMENT}/reactions" \
+                -f content='-1' --silent 2>/dev/null || true
+            fi
             echo "authorized=false" >> "$GITHUB_OUTPUT"
           else
             echo "authorized=true" >> "$GITHUB_OUTPUT"
@@ -56,48 +60,69 @@ jobs:
       - name: Acknowledge command
         if: steps.perms.outputs.authorized == 'true'
         env:
-          REACTION_TARGET: ${{ steps.perms.outputs.reaction_target }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID_FROM_COMMENT: ${{ github.event.comment.id }}
+          REVIEW_ID_FROM_REVIEW: ${{ github.event.review.id }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh api "${REACTION_TARGET}" -f content='eyes' --silent
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID_FROM_REVIEW}/reactions" \
+              -f content='eyes' --silent 2>/dev/null || true
+          else
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID_FROM_COMMENT}/reactions" \
+              -f content='eyes' --silent
+          fi
 
       - name: Parse command
         if: steps.perms.outputs.authorized == 'true'
         id: parse
         env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
-          REVIEW_BODY: ${{ github.event.review.body }}
-          ISSUE_NUM: ${{ github.event.issue.number }}
-          PR_NUM: ${{ github.event.pull_request.number }}
+          COMMENT_BODY_FROM_COMMENT: ${{ github.event.comment.body }}
+          COMMENT_BODY_FROM_REVIEW: ${{ github.event.review.body }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER_FROM_REVIEW: ${{ github.event.pull_request.number }}
+          ISSUE_NUMBER_FROM_COMMENT: ${{ github.event.issue.number }}
           IS_PR_COMMENT: ${{ github.event.issue.pull_request.url && 'true' || 'false' }}
         run: |
-          if [ "${{ github.event_name }}" = "issue_comment" ]; then
-            BODY="$COMMENT_BODY"
-            GREP_PREFIX="^"
-            if [ "$IS_PR_COMMENT" = "true" ]; then
-              echo "is_pr=true" >> "$GITHUB_OUTPUT"
-              echo "pr_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-              echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-            else
-              echo "is_pr=false" >> "$GITHUB_OUTPUT"
-              echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-            fi
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            COMMENT_BODY="$COMMENT_BODY_FROM_REVIEW"
           else
-            BODY="$REVIEW_BODY"
-            GREP_PREFIX=""
-            echo "is_pr=true" >> "$GITHUB_OUTPUT"
-            echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
-            echo "issue_number=" >> "$GITHUB_OUTPUT"
+            COMMENT_BODY="$COMMENT_BODY_FROM_COMMENT"
           fi
 
-          if echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix retry"; then
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            IS_PR="true"
+            PR_NUMBER="$PR_NUMBER_FROM_REVIEW"
+            ISSUE_NUMBER="$PR_NUMBER_FROM_REVIEW"
+          elif [ "$IS_PR_COMMENT" = "true" ]; then
+            IS_PR="true"
+            PR_NUMBER="$ISSUE_NUMBER_FROM_COMMENT"
+            ISSUE_NUMBER="$ISSUE_NUMBER_FROM_COMMENT"
+          else
+            IS_PR="false"
+            ISSUE_NUMBER="$ISSUE_NUMBER_FROM_COMMENT"
+          fi
+
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "is_pr=${IS_PR}" >> "$GITHUB_OUTPUT"
+          [ "$IS_PR" = "true" ] && echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            GREP_PREFIX=""
+          else
+            GREP_PREFIX="^"
+          fi
+
+          if echo "$COMMENT_BODY" | grep -qE "${GREP_PREFIX}/autofix retry"; then
             echo "command=retry" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix cancel"; then
+          elif echo "$COMMENT_BODY" | grep -qE "${GREP_PREFIX}/autofix cancel"; then
             echo "command=cancel" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix status"; then
+          elif echo "$COMMENT_BODY" | grep -qE "${GREP_PREFIX}/autofix status"; then
             echo "command=status" >> "$GITHUB_OUTPUT"
-          elif echo "$BODY" | grep -qE "${GREP_PREFIX}/autofix (model=|turns=)"; then
-            MODEL=$(echo "$BODY" | sed -n 's|.*/autofix.*model=\([^ ]*\).*|\1|p')
-            TURNS=$(echo "$BODY" | sed -n 's|.*/autofix.*turns=\([^ ]*\).*|\1|p')
+          elif echo "$COMMENT_BODY" | grep -qE "${GREP_PREFIX}/autofix (model=|turns=)"; then
+            MODEL=$(echo "$COMMENT_BODY" | sed -n 's|.*/autofix.*model=\([^ ]*\).*|\1|p')
+            TURNS=$(echo "$COMMENT_BODY" | sed -n 's|.*/autofix.*turns=\([^ ]*\).*|\1|p')
             echo "command=retry" >> "$GITHUB_OUTPUT"
             [ -n "$MODEL" ] && echo "model_override=${MODEL}" >> "$GITHUB_OUTPUT"
             [ -n "$TURNS" ] && echo "max_turns_override=${TURNS}" >> "$GITHUB_OUTPUT"
@@ -108,57 +133,57 @@ jobs:
       - name: Handle retry
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'retry'
         env:
-          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
-          MODEL_OVERRIDE: ${{ steps.parse.outputs.model_override }}
-          TURNS_OVERRIDE: ${{ steps.parse.outputs.max_turns_override }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
           IS_PR: ${{ steps.parse.outputs.is_pr }}
           PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
+          MODEL_OVERRIDE: ${{ steps.parse.outputs.model_override }}
+          TURNS_OVERRIDE: ${{ steps.parse.outputs.max_turns_override }}
           REPO: ${{ github.repository }}
-          REACTION_TARGET: ${{ steps.perms.outputs.reaction_target }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          DISPATCH_ARGS=""
+          DISPATCH_ARGS=(-f issue_number="$ISSUE_NUMBER")
 
-          if [ "$IS_PR" = "true" ] && [ -n "$PR_NUMBER" ]; then
-            DISPATCH_ARGS="${DISPATCH_ARGS} -f pr_number=${PR_NUMBER}"
-
-            if [ -z "$ISSUE_NUM" ]; then
-              PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
-              ISSUE_NUM=$(echo "$PR_BODY" | grep -oE '(Fixes|Closes|Resolves) #[0-9]+' | head -1 | grep -oE '[0-9]+')
+          if [ "$IS_PR" = "true" ]; then
+            LINKED_ISSUE=$(gh pr view "$PR_NUMBER" --json body -q '.body' \
+              | grep -ioE '(fixes|closes|resolves) #[0-9]+' | head -1 | grep -oE '[0-9]+')
+            if [ -n "$LINKED_ISSUE" ]; then
+              DISPATCH_ARGS=(-f issue_number="$LINKED_ISSUE")
             fi
-
-            if [ -z "$ISSUE_NUM" ]; then
-              echo "::error::Could not resolve linked issue number from PR #${PR_NUMBER}."
-              gh api "${REACTION_TARGET}" -f content='confused' --silent
-              exit 1
-            fi
+            DISPATCH_ARGS+=(-f pr_number="$PR_NUMBER")
           fi
 
-          DISPATCH_ARGS="${DISPATCH_ARGS} -f issue_number=${ISSUE_NUM}"
+          [ -n "$MODEL_OVERRIDE" ] && DISPATCH_ARGS+=(-f model_override="$MODEL_OVERRIDE")
+          [ -n "$TURNS_OVERRIDE" ] && DISPATCH_ARGS+=(-f max_turns_override="$TURNS_OVERRIDE")
 
-          if [ -n "$MODEL_OVERRIDE" ]; then
-            DISPATCH_ARGS="${DISPATCH_ARGS} -f model_override=${MODEL_OVERRIDE}"
-          fi
-
-          if [ -n "$TURNS_OVERRIDE" ]; then
-            DISPATCH_ARGS="${DISPATCH_ARGS} -f max_turns_override=${TURNS_OVERRIDE}"
-          fi
-
-          gh workflow run autofix.yml $DISPATCH_ARGS
+          gh workflow run autofix.yml "${DISPATCH_ARGS[@]}"
 
           if [ "$IS_PR" = "true" ]; then
             gh pr edit "$PR_NUMBER" --remove-label "autofix-failed" 2>/dev/null || true
           else
-            gh issue edit "$ISSUE_NUM" --remove-label "autofix-failed" 2>/dev/null || true
+            gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-failed" 2>/dev/null || true
           fi
 
-          gh api "${REACTION_TARGET}" -f content='rocket' --silent
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+              -f content='rocket' --silent 2>/dev/null || true
+          else
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='rocket' --silent 2>/dev/null || true
+          fi
 
       - name: Handle cancel
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'cancel'
         env:
-          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
           REPO: ${{ github.repository }}
-          REACTION_TARGET: ${{ steps.perms.outputs.reaction_target }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           RUNS=$(gh run list --workflow=autofix.yml --status=in_progress --json databaseId -q '.[].databaseId')
 
@@ -167,34 +192,40 @@ jobs:
             gh run cancel "$RUN_ID" 2>/dev/null && CANCELLED=$((CANCELLED + 1))
           done
 
-          if [ -n "$ISSUE_NUM" ]; then
-            gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
-            gh issue comment "$ISSUE_NUM" --body "Autofix cancelled. ${CANCELLED} workflow run(s) stopped."
+          gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
+
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+              -f content='octagonal_sign' --silent 2>/dev/null || true
+          else
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='octagonal_sign' --silent 2>/dev/null || true
           fi
 
-          gh api "${REACTION_TARGET}" -f content='octagonal_sign' --silent
+          gh issue comment "$ISSUE_NUMBER" --body "Autofix cancelled. ${CANCELLED} workflow run(s) stopped."
 
       - name: Handle status
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'status'
         env:
-          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
-          PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
           REPO: ${{ github.repository }}
-          REACTION_TARGET: ${{ steps.perms.outputs.reaction_target }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           LATEST_RUN=$(gh run list --workflow=autofix.yml --limit 5 --json databaseId,status,conclusion,createdAt,url \
             -q 'sort_by(.createdAt) | reverse | .[0]')
 
-          STATUS_BODY=""
           if [ -z "$LATEST_RUN" ] || [ "$LATEST_RUN" = "null" ]; then
-            STATUS_BODY="No autofix workflow runs found."
+            gh issue comment "$ISSUE_NUMBER" --body "No autofix workflow runs found."
           else
             RUN_STATUS=$(echo "$LATEST_RUN" | jq -r '.status')
             RUN_CONCLUSION=$(echo "$LATEST_RUN" | jq -r '.conclusion // "n/a"')
             RUN_URL=$(echo "$LATEST_RUN" | jq -r '.url')
             RUN_CREATED=$(echo "$LATEST_RUN" | jq -r '.createdAt')
 
-            STATUS_BODY="## Autofix Status
+            gh issue comment "$ISSUE_NUMBER" --body "## Autofix Status
 
           | Field | Value |
           |-------|-------|
@@ -204,25 +235,33 @@ jobs:
           | **Run** | [View workflow run](${RUN_URL}) |"
           fi
 
-          if [ -n "$ISSUE_NUM" ]; then
-            gh issue comment "$ISSUE_NUM" --body "$STATUS_BODY"
-          elif [ -n "$PR_NUMBER" ]; then
-            gh pr comment "$PR_NUMBER" --body "$STATUS_BODY"
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+              -f content='chart_with_upwards_trend' --silent 2>/dev/null || true
+          else
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='chart_with_upwards_trend' --silent 2>/dev/null || true
           fi
-
-          gh api "${REACTION_TARGET}" -f content='chart_with_upwards_trend' --silent
 
       - name: Handle unknown command
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'unknown'
         env:
           REPO: ${{ github.repository }}
-          REACTION_TARGET: ${{ steps.perms.outputs.reaction_target }}
-          ISSUE_NUM: ${{ steps.parse.outputs.issue_number }}
-          PR_NUMBER: ${{ steps.parse.outputs.pr_number }}
+          ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh api "${REACTION_TARGET}" -f content='question' --silent
+          if [ "$EVENT_NAME" = "pull_request_review" ]; then
+            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+              -f content='question' --silent 2>/dev/null || true
+          else
+            gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
+              -f content='question' --silent 2>/dev/null || true
+          fi
 
-          HELP_BODY="### Autofix Commands
+          gh issue comment "$ISSUE_NUMBER" --body "### Autofix Commands
 
           | Command | Description |
           |---------|-------------|
@@ -230,12 +269,5 @@ jobs:
           | \`/autofix cancel\` | Cancel the running autofix workflow |
           | \`/autofix status\` | Show the latest workflow run status |
           | \`/autofix model=<id>\` | Retry with a specific Bedrock model ID |
-          | \`/autofix turns=<N>\` | Retry with a custom max-turns limit |
 
           *Requires write access to this repository.*"
-
-          if [ -n "$ISSUE_NUM" ]; then
-            gh issue comment "$ISSUE_NUM" --body "$HELP_BODY"
-          elif [ -n "$PR_NUMBER" ]; then
-            gh pr comment "$PR_NUMBER" --body "$HELP_BODY"
-          fi

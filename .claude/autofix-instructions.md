@@ -4,7 +4,7 @@
 <!-- gg:autofix-scope=all -->
 <!-- gg:autofix-model=us.anthropic.claude-opus-4-6-v1 -->
 <!-- gg:autofix-test=true -->
-<!-- gg:autofix-test-cmd=npm run test:run -->
+<!-- gg:autofix-test-cmd=npm run test:run && npm run build -- --base /dekk/ && npx playwright test --project=chromium -->
 <!-- gg:autofix-timeout=60 -->
 <!-- gg:autofix-max-files=50 -->
 
@@ -31,10 +31,11 @@ Your job is to produce a complete fix or implementation and commit it.
 
 ## Testing
 
-- Run `npm run test:run` before finalizing your changes
+- Run `npm run test:run` (unit tests) before finalizing your changes
+- Run `npm run build -- --base /dekk/ && npx playwright test --project=chromium` (E2E tests) after unit tests pass
 - If tests fail, analyze the failure, fix the issue, and re-run (up to 3 attempts)
 - If tests still fail after 3 attempts, stop and report what you tried — set status to failure
-- Include the test result in your AUTOFIX_RESULT output
+- Include the test result in your AUTOFIX_RESULT output (report "passed" only if BOTH unit and E2E tests pass)
 
 ## Agent Strategy
 
@@ -75,7 +76,7 @@ When the issue involves UI changes (CSS, layout, components, visual bugs, stylin
    - No regressions in layout, spacing, or contrast
    - Text remains readable, interactive elements are accessible
 
-6. **Include in PR**: When the PR is created, the screenshots should be referenced. To include them, upload the before/after images as part of your output. Add a section to your summary noting that visual QA was performed.
+6. **Include in PR**: The workflow automatically uploads screenshots as artifacts and comments on the PR.
 
 ### Screenshot naming convention
 

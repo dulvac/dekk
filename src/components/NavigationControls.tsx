@@ -32,7 +32,7 @@ export function NavigationControls({
 
   return (
     <div
-      className={`${styles.controls} ${visible ? styles.visible : styles.hidden}`}
+      className={`${styles.controls} ${visible ? '' : styles.hidden}`}
       onMouseEnter={controlProps.onMouseEnter}
       onMouseLeave={controlProps.onMouseLeave}
     >
