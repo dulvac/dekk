@@ -476,18 +476,45 @@ jobs:
           )
           fi
 
+          echo "$PROMPT" > /tmp/claude_prompt.txt
+
+          # Run Claude with stream-json to capture full conversation (tool calls + results)
           set +e
           claude --print \
             --model "$ANTHROPIC_MODEL" \
             --max-turns "$CLAUDE_MAX_TURNS" \
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(*),NotebookEdit,Agent,mcp__context7__*,mcp__playwright__*" \
             --effort high \
-            "$PROMPT" 2>&1 | tee /tmp/claude_output.txt
-          CLAUDE_EXIT=${PIPESTATUS[0]}
+            --output-format stream-json \
+            "$PROMPT" > /tmp/claude_stream.jsonl 2>/tmp/claude_stderr.txt
+          CLAUDE_EXIT=$?
           set -e
 
-          echo "$PROMPT" > /tmp/claude_prompt.txt
-          CLAUDE_OUTPUT=$(cat /tmp/claude_output.txt)
+          # Extract all assistant text messages from the JSON stream for AUTOFIX_RESULT parsing
+          CLAUDE_OUTPUT=$(jq -r '
+            select(.type == "assistant")
+            | .message.content[]
+            | select(.type == "text")
+            | .text
+          ' /tmp/claude_stream.jsonl 2>/dev/null || echo "")
+
+          # Create a human-readable log from the stream for debugging
+          jq -r '
+            if .type == "assistant" then
+              "\n=== ASSISTANT ===\n" + (
+                [.message.content[] |
+                  if .type == "text" then .text
+                  elif .type == "tool_use" then "Tool: " + .name + "\n" + (.input | tostring | .[0:500])
+                  else empty
+                  end
+                ] | join("\n")
+              )
+            elif .type == "result" then
+              "\n=== RESULT (stop: " + (.result.stop_reason // "unknown") + ") ==="
+            else empty
+            end
+          ' /tmp/claude_stream.jsonl > /tmp/claude_output.txt 2>/dev/null \
+            || cp /tmp/claude_stream.jsonl /tmp/claude_output.txt
 
           if echo "$CLAUDE_OUTPUT" | grep -q "AUTOFIX_RESULT"; then
             STATUS=$(echo "$CLAUDE_OUTPUT" | grep -A20 "AUTOFIX_RESULT" | grep "^status:" | head -1 | awk '{print $2}')
@@ -889,6 +916,8 @@ jobs:
           path: |
             /tmp/claude_prompt.txt
             /tmp/claude_output.txt
+            /tmp/claude_stream.jsonl
+            /tmp/claude_stderr.txt
           if-no-files-found: ignore
           retention-days: 30
 
