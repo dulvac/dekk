@@ -58,37 +58,6 @@ They are defined as markdown files in `.claude/agents/`.
 
 ---
 
-## Agent Anatomy
-
-Every agent definition includes four key sections:
-
-```markdown
-# Ada - Software Architect
-
-## Personality
-Methodical, detail-oriented, uncompromising about
-code quality. Complexity is a bug.
-
-## Expertise
-- Architecture and system design
-- TypeScript type safety
-- Crash prevention
-
-## Constraints                          // [!code focus]
-- Does NOT write implementation code    // [!code focus]
-- Always references file:line numbers   // [!code focus]
-- Proposes concrete diffs, not vague suggestions // [!code focus]
-
-## Review Checklist
-- [ ] Are components small and focused?
-- [ ] Is the data flow unidirectional?
-- [ ] Could any code path throw unhandled?
-```
-
-**Constraints are as important as capabilities.** They prevent agents from stepping on each other's toes.
-
----
-
 ## The `.claude` Directory
 
 The project's entire AI infrastructure lives in a single, version-controlled directory:
@@ -121,35 +90,6 @@ The project's entire AI infrastructure lives in a single, version-controlled dir
 - **`settings.json`** — Hooks that enforce standards (e.g., block commits on `main`) and tool permissions.
 
 > Everything is **plain markdown and JSON** — no proprietary config format, no vendor lock-in. Check it into git and the whole team inherits the same AI workflow.
-
----
-
-## The Team Lead Pattern
-
-The team lead is a **conductor**, not a musician.
-
-```mermaid
-flowchart TD
-    User[User Request] --> Lead[Team Lead]
-    Lead -->|dispatch| Rex[Rex: Implement]
-    Lead -->|dispatch| Ada[Ada: Review]
-    Lead -->|dispatch| Sage[Sage: Security]
-    Lead -->|dispatch| Turing[Turing: Verify]
-    Lead -->|dispatch| Eliza[Eliza: Tooling]
-    Rex -->|report| Lead
-    Ada -->|report| Lead
-    Sage -->|report| Lead
-    Turing -->|report| Lead
-    Eliza -->|report| Lead
-    Lead -->|commit| Git[Git Repository]
-```
-
-**Five rules:**
-1. **Coordinate** — understand the request, plan the work
-2. **Dispatch** — spawn agents for each task
-3. **Review** — evaluate agent output
-4. **Commit** — only the lead touches git
-5. **Never implement** — that's the specialists' job
 
 ---
 
@@ -519,21 +459,23 @@ Phases 1-3 = **minimum viable pipeline.** Phases 4-6 = production hardening.
 
 ```mermaid
 flowchart TD
-    subgraph Today["Today: Manual"]
+    subgraph Manual["Before: Manual"]
         U1[Human] -->|"types /issue-swarm"| C1[Claude Code CLI]
         C1 -->|"agents in worktrees"| P1[PRs Created]
     end
 
-    subgraph Tomorrow["Tomorrow: Automated"]
-        I2[Issue Created] -->|"label: auto-fix"| G2[GitHub Actions]
-        G2 -->|"claude-code-action"| C2[Claude Code]
-        C2 -->|"implement + review"| P2[PR Ready for Merge]
+    subgraph Auto["Now: Autofix"]
+        I2["Issue #36: Overlay buttons\nlack contrast"] -->|"label: autofix"| GH[GitHub Actions]
+        GH -->|"classify: bug, visual"| CC["Claude Code (Opus)"]
+        CC -->|"fix/issue-36-..."| PR["PR + VQA screenshots"]
+        PR -->|"reviewer feedback"| RV["/autofix retry"]
+        RV -->|"revision commits"| PR
     end
 
-    Today -.->|"same team, no human trigger"| Tomorrow
+    Manual -.->|"same agents, no human trigger"| Auto
 ```
 
-> The difference is one label instead of one command. The agent team, the standards, and the review process stay the same.
+> Real example: issue #36 (overlay button contrast) — labeled `autofix`, classified as visual bug, Claude fixed it autonomously, captured before/after screenshots, and opened a PR. Reviewer feedback triggers revision rounds via `/autofix retry`.
 
 ---
 
