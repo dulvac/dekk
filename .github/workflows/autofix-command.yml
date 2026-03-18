@@ -85,12 +85,14 @@ jobs:
           ISSUE_NUMBER_FROM_COMMENT: ${{ github.event.issue.number }}
           IS_PR_COMMENT: ${{ github.event.issue.pull_request.url && 'true' || 'false' }}
         run: |
+          # Normalize comment body
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
             COMMENT_BODY="$COMMENT_BODY_FROM_REVIEW"
           else
             COMMENT_BODY="$COMMENT_BODY_FROM_COMMENT"
           fi
 
+          # Detect PR vs issue context
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
             IS_PR="true"
             PR_NUMBER="$PR_NUMBER_FROM_REVIEW"
@@ -108,6 +110,8 @@ jobs:
           echo "is_pr=${IS_PR}" >> "$GITHUB_OUTPUT"
           [ "$IS_PR" = "true" ] && echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
 
+          # For issue_comment: commands must start with /autofix (anchored)
+          # For pull_request_review: /autofix can appear anywhere (contains)
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
             GREP_PREFIX=""
           else
@@ -143,11 +147,13 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_ID: ${{ github.event.comment.id }}
           REVIEW_ID: ${{ github.event.review.id }}
-          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
         run: |
+
           DISPATCH_ARGS=(-f issue_number="$ISSUE_NUMBER")
 
           if [ "$IS_PR" = "true" ]; then
+            # Resolve linked issue number from PR body
             LINKED_ISSUE=$(gh pr view "$PR_NUMBER" --json body -q '.body' \
               | grep -ioE '(fixes|closes|resolves) #[0-9]+' | head -1 | grep -oE '[0-9]+')
             if [ -n "$LINKED_ISSUE" ]; then
@@ -167,8 +173,9 @@ jobs:
             gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-failed" 2>/dev/null || true
           fi
 
+          # React with rocket — handle both event types
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
-            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+            gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID}/reactions" \
               -f content='rocket' --silent 2>/dev/null || true
           else
             gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
@@ -179,11 +186,12 @@ jobs:
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'cancel'
         env:
           ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
+          IS_PR: ${{ steps.parse.outputs.is_pr }}
           REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_ID: ${{ github.event.comment.id }}
           REVIEW_ID: ${{ github.event.review.id }}
-          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
         run: |
           RUNS=$(gh run list --workflow=autofix.yml --status=in_progress --json databaseId -q '.[].databaseId')
 
@@ -192,10 +200,15 @@ jobs:
             gh run cancel "$RUN_ID" 2>/dev/null && CANCELLED=$((CANCELLED + 1))
           done
 
-          gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
+          if [ "$IS_PR" = "true" ]; then
+            gh pr edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
+          else
+            gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
+          fi
 
+          # React — handle both event types
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
-            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+            gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID}/reactions" \
               -f content='octagonal_sign' --silent 2>/dev/null || true
           else
             gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
@@ -212,8 +225,9 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_ID: ${{ github.event.comment.id }}
           REVIEW_ID: ${{ github.event.review.id }}
-          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
         run: |
+
           LATEST_RUN=$(gh run list --workflow=autofix.yml --limit 5 --json databaseId,status,conclusion,createdAt,url \
             -q 'sort_by(.createdAt) | reverse | .[0]')
 
@@ -235,8 +249,9 @@ jobs:
           | **Run** | [View workflow run](${RUN_URL}) |"
           fi
 
+          # React — handle both event types
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
-            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+            gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID}/reactions" \
               -f content='chart_with_upwards_trend' --silent 2>/dev/null || true
           else
             gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \
@@ -246,15 +261,16 @@ jobs:
       - name: Handle unknown command
         if: steps.perms.outputs.authorized == 'true' && steps.parse.outputs.command == 'unknown'
         env:
-          REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ steps.parse.outputs.issue_number }}
+          REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_ID: ${{ github.event.comment.id }}
           REVIEW_ID: ${{ github.event.review.id }}
-          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER_FOR_REVIEW: ${{ github.event.pull_request.number }}
         run: |
+          # React — handle both event types
           if [ "$EVENT_NAME" = "pull_request_review" ]; then
-            gh api "repos/${REPO}/pulls/${REVIEW_PR_NUMBER}/reviews/${REVIEW_ID}/reactions" \
+            gh api "repos/${REPO}/pulls/${PR_NUMBER_FOR_REVIEW}/reviews/${REVIEW_ID}/reactions" \
               -f content='question' --silent 2>/dev/null || true
           else
             gh api "repos/${REPO}/issues/comments/${COMMENT_ID}/reactions" \

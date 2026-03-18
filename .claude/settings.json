@@ -1,4 +1,17 @@
 {
+  "extraKnownMarketplaces": {
+    "code-halle": {
+      "source": {
+        "source": "github",
+        "repo": "Adobe-AEM-Foundation/code-halle",
+        "ref": "main"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "gg@code-halle": true,
+    "vqa@code-halle": true
+  },
   "permissions": {
     "allow": [
       "Bash(npm run test:run)",

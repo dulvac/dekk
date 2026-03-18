@@ -49,42 +49,29 @@ This project has agent team definitions. Use them when applicable:
 
 Delegate subtasks to the appropriate agents as defined in the team configuration.
 
-## Visual QA (UI changes only)
+## Visual QA
 
-When the issue involves UI changes (CSS, layout, components, visual bugs, styling, new UI features), you MUST perform visual QA with before/after screenshots:
+When the issue involves visual or UI changes (you will be told if the issue was classified as visual, but you should also self-detect during implementation), use the project's Visual QA skills to capture before/after screenshots.
 
-### Workflow
+**How to use:**
 
-1. **Detect UI relevance**: Check if the issue title, body, or labels mention visual/UI keywords (button, modal, layout, CSS, style, component, responsive, form, navbar, sidebar, footer, header, card, dialog, toast, tooltip, animation, theme, color, font, padding, margin, spacing, grid, flex, redesign, visual bug, UX).
+1. **Check if VQA is configured:** Read `.vqa/config.json`. If it exists, you have dev server config and viewport definitions ready.
 
-2. **Capture "before" screenshots**: Before making any code changes:
-   - Start the dev server: `npm run dev &` (background it, wait for it to be ready)
-   - Use Playwright MCP tools to navigate to the affected pages and take screenshots
-   - Key routes: `http://localhost:5173` (picker), `http://localhost:5173/#deck/{id}/{n}` (presentation), `http://localhost:5173/#deck/{id}/editor` (editor), `http://localhost:5173/#deck/{id}/overview` (overview)
-   - Capture at desktop (1440x900) viewport at minimum; include tablet (768x1024) and mobile (375x812) if the issue is responsive-related
-   - Save screenshots to `/tmp/vqa-before/` with descriptive names
+2. **Before making changes:** Read the VQA snap skill at `plugins/visual-qa/skills/snap/SKILL.md` and follow its instructions in **agent mode**. This handles dev server startup, route detection, and multi-viewport screenshot capture. **Override the snapshot output directory** to `/tmp/vqa-before/` instead of `.vqa/snapshots/before/`.
 
-3. **Make your code changes** and commit them as normal.
+3. **After making changes:** Read the VQA review skill at `plugins/visual-qa/skills/review/SKILL.md` and follow its instructions in **agent mode**. It captures after-state screenshots, compares with before-state, and produces a structured analysis. **Override the snapshot output directory** to `/tmp/vqa-after/` instead of `.vqa/snapshots/after/`, and read before-state screenshots from `/tmp/vqa-before/`.
 
-4. **Capture "after" screenshots**: After changes are complete:
-   - Restart the dev server if needed (kill old process, start fresh)
-   - Navigate to the same pages and take screenshots at the same viewports
-   - Save screenshots to `/tmp/vqa-after/` with matching names
+4. **If `.vqa/config.json` does not exist:** Fall back to basic screenshot capture — detect the dev server from `package.json` scripts, start it, use Playwright MCP tools (`browser_navigate`, `browser_take_screenshot`) to capture the affected pages at 1440x900. Save to `/tmp/vqa-before/` and `/tmp/vqa-after/` with descriptive names.
 
-5. **Analyze the diff**: Compare before/after screenshots visually. Verify:
-   - The fix addresses the reported issue
-   - No regressions in layout, spacing, or contrast
-   - Text remains readable, interactive elements are accessible
+5. **If Playwright MCP tools are not available:** Skip screenshot capture entirely. Do not fail the run because of missing VQA tooling.
 
-6. **Include in PR**: The workflow automatically uploads screenshots as artifacts and comments on the PR.
+6. **Self-detection:** Even if the issue was not classified as visual, if you determine during implementation that your changes affect UI rendering (modifying CSS, HTML templates, component markup, layout, colors, fonts, spacing), capture before/after screenshots.
 
-### Screenshot naming convention
+Screenshot paths (CI override):
+- Before: `/tmp/vqa-before/<route-slug>-<viewport-name>.png`
+- After: `/tmp/vqa-after/<route-slug>-<viewport-name>.png`
 
-Use descriptive names: `{view}-{viewport}.png` (e.g., `picker-desktop.png`, `editor-mobile.png`).
-
-### If Playwright is unavailable
-
-If MCP Playwright tools are not available in the CI environment, skip visual QA and note `visual_qa: skipped (no Playwright)` in your output. Do not fail the run because of this.
+The workflow will automatically upload these as artifacts and comment on the PR with inline before/after comparison images.
 
 ## Revision Mode
 

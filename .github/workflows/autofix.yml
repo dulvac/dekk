@@ -50,13 +50,14 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           SENDER_LOGIN: ${{ github.event.sender.login }}
-          ISSUE_NUM: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          PERMISSION=$(gh api "repos/${{ github.repository }}/collaborators/${SENDER_LOGIN}/permission" --jq '.permission')
+          PERMISSION=$(gh api "repos/${REPO}/collaborators/${SENDER_LOGIN}/permission" --jq '.permission')
           if [[ "$PERMISSION" != "write" && "$PERMISSION" != "admin" ]]; then
             echo "::error::User ${SENDER_LOGIN} does not have write access (permission: $PERMISSION). Removing autofix label."
-            gh issue edit "$ISSUE_NUM" --remove-label "autofix"
+            gh issue edit "$ISSUE_NUMBER" --remove-label "autofix"
             exit 1
           fi
 
@@ -64,18 +65,20 @@ jobs:
         id: issue-data
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUM: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          ISSUE_NUMBER_EVENT: ${{ github.event.issue.number || github.event.inputs.issue_number }}
         run: |
-          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
+          ISSUE_NUMBER="$ISSUE_NUMBER_EVENT"
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
-          ISSUE_JSON=$(gh issue view "$ISSUE_NUM" --json title,body,labels)
+          ISSUE_JSON=$(gh issue view "$ISSUE_NUMBER" --json title,body,labels)
           echo "issue_title=$(echo "$ISSUE_JSON" | jq -r '.title')" >> "$GITHUB_OUTPUT"
 
           echo "$ISSUE_JSON" | jq -r '.body' > /tmp/issue_body.txt
+          DELIM="ISSUE_BODY_DELIM_$(date +%s%N)"
           {
-            echo "issue_body<<ISSUE_BODY_EOF"
+            echo "issue_body<<${DELIM}"
             cat /tmp/issue_body.txt
-            echo "ISSUE_BODY_EOF"
+            echo "${DELIM}"
           } >> "$GITHUB_OUTPUT"
 
           LABELS=$(echo "$ISSUE_JSON" | jq -r '[.labels[].name] | join(",")')
@@ -85,9 +88,9 @@ jobs:
         id: check-state
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ steps.issue-data.outputs.issue_number }}
         run: |
-          STATE=$(gh issue view "$ISSUE_NUM" --json state -q '.state')
+          STATE=$(gh issue view "$ISSUE_NUMBER" --json state -q '.state')
           if [ "$STATE" != "OPEN" ]; then
             echo "Issue is not open (state: $STATE). Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -102,35 +105,37 @@ jobs:
           CLAUDE_CODE_USE_BEDROCK: "1"
           AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          ISSUE_NUM: ${{ steps.issue-data.outputs.issue_number }}
-          ISSUE_TITLE_INPUT: ${{ steps.issue-data.outputs.issue_title }}
-          ISSUE_LABELS: ${{ steps.issue-data.outputs.labels }}
           PREV_ISSUE_BODY: ${{ steps.issue-data.outputs.issue_body }}
+          ISSUE_NUMBER: ${{ steps.issue-data.outputs.issue_number }}
+          ISSUE_TITLE: ${{ steps.issue-data.outputs.issue_title }}
+          LABELS: ${{ steps.issue-data.outputs.labels }}
         run: |
-          echo "issue_number=${ISSUE_NUM}" >> "$GITHUB_OUTPUT"
-          echo "issue_title=${ISSUE_TITLE_INPUT}" >> "$GITHUB_OUTPUT"
+
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "issue_title=${ISSUE_TITLE}" >> "$GITHUB_OUTPUT"
+          DELIM="ISSUE_BODY_DELIM_$(date +%s%N)"
           {
-            echo "issue_body<<ISSUE_BODY_EOF"
+            echo "issue_body<<${DELIM}"
             echo "$PREV_ISSUE_BODY"
-            echo "ISSUE_BODY_EOF"
+            echo "${DELIM}"
           } >> "$GITHUB_OUTPUT"
 
           ISSUE_TYPE=""
 
-          if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(bug|defect|broken|regression)(,|$)'; then
+          if echo "$LABELS" | grep -iqE '(^|,)(bug|defect|broken|regression)(,|$)'; then
             ISSUE_TYPE="bug"
           fi
 
           if [ -z "$ISSUE_TYPE" ]; then
-            if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(feature|enhancement|request)(,|$)'; then
+            if echo "$LABELS" | grep -iqE '(^|,)(feature|enhancement|request)(,|$)'; then
               ISSUE_TYPE="feature"
             fi
           fi
 
           if [ -z "$ISSUE_TYPE" ]; then
-            if echo "$ISSUE_TITLE_INPUT" | grep -iqE '^\[(bug|fix)\]'; then
+            if echo "$ISSUE_TITLE" | grep -iqE '^\[(bug|fix)\]'; then
               ISSUE_TYPE="bug"
-            elif echo "$ISSUE_TITLE_INPUT" | grep -iqE '^\[(feat|feature|request|enhancement)\]'; then
+            elif echo "$ISSUE_TITLE" | grep -iqE '^\[(feat|feature|request|enhancement)\]'; then
               ISSUE_TYPE="feature"
             fi
           fi
@@ -141,9 +146,9 @@ jobs:
               --model "us.anthropic.claude-sonnet-4-6" \
               "Classify this GitHub issue as exactly one of: bug, feature, skip. Reply with ONLY that single word, nothing else.
 
-              Title: ${ISSUE_TITLE_INPUT}
+              Title: ${ISSUE_TITLE}
               Body: $(cat /tmp/issue_body.txt | head -c 2000)
-              Labels: ${ISSUE_LABELS}")
+              Labels: ${LABELS}")
 
             CLASSIFICATION=$(echo "$CLASSIFICATION" | tr '[:upper:]' '[:lower:]' | xargs)
             case "$CLASSIFICATION" in
@@ -171,9 +176,9 @@ jobs:
 
           # Detect if issue involves visual/UI changes
           IS_VISUAL="false"
-          if echo "$ISSUE_LABELS" | grep -iqE '(^|,)(ui|ux|visual|css|style|design|frontend|layout)(,|$)'; then
+          if echo "$LABELS" | grep -iqE '(^|,)(ui|ux|visual|css|style|design|frontend|layout)(,|$)'; then
             IS_VISUAL="true"
-          elif echo "$ISSUE_TITLE_INPUT" | grep -iqE '\b(ui|ux|visual|css|style|layout|button|modal|dialog|responsive|font|color|theme|sidebar|navbar|header|footer|card|toast|tooltip|animation|spacing|padding|margin)\b'; then
+          elif echo "$ISSUE_TITLE" | grep -iqE '\b(ui|ux|visual|css|style|layout|button|modal|dialog|responsive|font|color|theme|sidebar|navbar|header|footer|card|toast|tooltip|animation|spacing|padding|margin)\b'; then
             IS_VISUAL="true"
           elif cat /tmp/issue_body.txt | head -c 2000 | grep -iqE '\b(screenshot|visual|looks wrong|layout broken|misaligned|pixel|render|display issue|styling|css)\b'; then
             IS_VISUAL="true"
@@ -221,17 +226,23 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
+
+          # Verify PR has autofix label
           HAS_LABEL=$(gh pr view "$PR_NUMBER" --json labels -q '.labels[].name' | grep -c '^autofix$' || true)
           if [ "$HAS_LABEL" -eq 0 ]; then
             echo "::error::PR #${PR_NUMBER} does not have the 'autofix' label. Skipping."
             gh pr comment "$PR_NUMBER" --body "This PR was not created by autofix. The \`/autofix retry\` command only works on autofix-generated PRs."
             exit 1
           fi
+
+          # Verify PR is open
           PR_STATE=$(gh pr view "$PR_NUMBER" --json state -q '.state')
           if [ "$PR_STATE" != "OPEN" ]; then
             echo "::error::PR #${PR_NUMBER} is not open (state: ${PR_STATE}). Skipping."
             exit 1
           fi
+
+          # Checkout PR branch
           PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
           git checkout "$PR_BRANCH"
           git pull origin "$PR_BRANCH"
@@ -243,26 +254,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          ISSUE_NUM: ${{ github.event.inputs.issue_number }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          REPO: ${{ github.repository }}
         run: |
-          REPO="${{ github.repository }}"
+
+          # Get PR diff
           gh pr diff "$PR_NUMBER" > /tmp/pr_diff.txt
+
+          # Get inline review comments
           gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
             --jq '.[] | "File: \(.path):\(.line // .original_line)\nComment: \(.body)\n---"' \
             > /tmp/review_comments.txt 2>/dev/null || echo "No inline comments." > /tmp/review_comments.txt
+
+          # Get PR conversation comments
           gh pr view "$PR_NUMBER" --comments --json comments \
             --jq '.comments[] | "Author: \(.author.login)\n\(.body)\n---"' \
             > /tmp/pr_comments.txt 2>/dev/null || echo "No PR comments." > /tmp/pr_comments.txt
-          ISSUE_TITLE=$(gh issue view "$ISSUE_NUM" --json title -q '.title' 2>/dev/null || echo "Unknown")
-          ISSUE_BODY=$(gh issue view "$ISSUE_NUM" --json body -q '.body' 2>/dev/null || echo "No issue body available.")
+
+          # Get original issue context
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --json title -q '.title' 2>/dev/null || echo "Unknown")
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUMBER" --json body -q '.body' 2>/dev/null || echo "No issue body available.")
           echo "$ISSUE_TITLE" > /tmp/original_issue_title.txt
           echo "$ISSUE_BODY" > /tmp/original_issue_body.txt
+
+          # Track revision rounds
           MAX_REVISIONS=$(grep -oE 'gg:autofix-max-revisions=[0-9]+' DEVELOPMENT.md | grep -oE '[0-9]+' || echo "5")
           REVISION_ROUND=$(gh pr view "$PR_NUMBER" --comments --json comments \
             --jq '[.comments[] | select(.body | startswith("## Autofix Revision"))] | length')
           REVISION_ROUND=$((REVISION_ROUND + 1))
+
           echo "revision_round=${REVISION_ROUND}" >> "$GITHUB_OUTPUT"
           echo "max_revisions=${MAX_REVISIONS}" >> "$GITHUB_OUTPUT"
+
           REVISION_WARNING=""
           if [ "$REVISION_ROUND" -ge "$MAX_REVISIONS" ]; then
             REVISION_WARNING="WARNING: This is revision round ${REVISION_ROUND}, at or beyond the configured limit of ${MAX_REVISIONS}. Consider whether this PR needs human intervention."
@@ -273,19 +296,19 @@ jobs:
       - name: Add autofix-running label
         if: github.event.inputs.pr_number == ''
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
         run: |
-          gh issue edit "$ISSUE_NUM" --add-label "autofix-running"
+          gh issue edit "$ISSUE_NUMBER" --add-label "autofix-running"
 
       - name: Check for existing autofix PR
         if: github.event.inputs.pr_number == ''
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
         run: |
-          EXISTING_PR=$(gh pr list --label "autofix" --json url,title --jq ".[] | select(.title | contains(\"#${ISSUE_NUM}\")) | .url" | head -1)
+          EXISTING_PR=$(gh pr list --label "autofix" --json url,title --jq ".[] | select(.title | contains(\"#${ISSUE_NUMBER}\")) | .url" | head -1)
           if [ -n "$EXISTING_PR" ]; then
-            gh issue comment "$ISSUE_NUM" --body "An autofix PR already exists: ${EXISTING_PR}. Close it first, then run \`/autofix retry\`."
-            gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
+            gh issue comment "$ISSUE_NUMBER" --body "An autofix PR already exists: ${EXISTING_PR}. Close it first, then run \`/autofix retry\`."
+            gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
             exit 1
           fi
 
@@ -293,11 +316,12 @@ jobs:
         if: github.event.inputs.pr_number == ''
         id: branch
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
           ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
-          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
+          ISSUE_TITLE: ${{ needs.classify.outputs.issue_title }}
         run: |
-          SHORT_DESC=$(echo "$ISSUE_TITLE_INPUT" \
+
+          SHORT_DESC=$(echo "$ISSUE_TITLE" \
             | sed 's/\[.*\]//g' \
             | tr '[:upper:]' '[:lower:]' \
             | sed 's/[^a-z0-9 ]//g' \
@@ -306,9 +330,9 @@ jobs:
             | cut -c1-40)
 
           if [ "$ISSUE_TYPE" = "bug" ]; then
-            BRANCH="fix/issue-${ISSUE_NUM}-${SHORT_DESC}"
+            BRANCH="fix/issue-${ISSUE_NUMBER}-${SHORT_DESC}"
           else
-            BRANCH="feat/issue-${ISSUE_NUM}-${SHORT_DESC}"
+            BRANCH="feat/issue-${ISSUE_NUMBER}-${SHORT_DESC}"
           fi
 
           git checkout -B "$BRANCH"
@@ -366,27 +390,36 @@ jobs:
         id: claude
         env:
           ISSUE_BODY_INPUT: ${{ needs.classify.outputs.issue_body }}
+          CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          CLASSIFY_ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
+          CLASSIFY_ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          CLASSIFY_ISSUE_TITLE: ${{ needs.classify.outputs.issue_title }}
+          CLASSIFY_IS_VISUAL: ${{ needs.classify.outputs.is_visual }}
+          REVIEW_REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
+          REVIEW_MAX_REVISIONS: ${{ steps.review-context.outputs.max_revisions }}
         run: |
           AUTOFIX_INSTRUCTIONS=$(cat .claude/autofix-instructions.md 2>/dev/null || echo "No autofix instructions found.")
 
-          IS_REVISION="${{ github.event.inputs.pr_number }}"
+          IS_REVISION="$INPUT_PR_NUMBER"
 
           if [ -n "$IS_REVISION" ]; then
-            PR_NUMBER="${{ github.event.inputs.pr_number }}"
-            ISSUE_NUM="${{ github.event.inputs.issue_number }}"
+            PR_NUMBER="$INPUT_PR_NUMBER"
+            ISSUE_NUMBER="$INPUT_ISSUE_NUMBER"
             ISSUE_TITLE=$(cat /tmp/original_issue_title.txt)
             ISSUE_BODY=$(cat /tmp/original_issue_body.txt)
             PR_DIFF=$(cat /tmp/pr_diff.txt | head -c 50000)
             REVIEW_COMMENTS=$(cat /tmp/review_comments.txt | head -c 20000)
             PR_COMMENTS=$(cat /tmp/pr_comments.txt | head -c 20000)
-            REVISION_ROUND="${{ steps.review-context.outputs.revision_round }}"
-            MAX_REVISIONS="${{ steps.review-context.outputs.max_revisions }}"
+            REVISION_ROUND="$REVIEW_REVISION_ROUND"
+            MAX_REVISIONS="$REVIEW_MAX_REVISIONS"
             REVISION_WARNING=$(cat /tmp/revision_warning.txt)
 
             PROMPT=$(cat <<PROMPT_EOF
           You are revising PR #${PR_NUMBER} based on reviewer feedback.
 
-          **Original issue:** #${ISSUE_NUM} — ${ISSUE_TITLE}
+          **Original issue:** #${ISSUE_NUMBER} — ${ISSUE_TITLE}
           ${ISSUE_BODY}
 
           **Your previous changes (PR diff):**
@@ -411,11 +444,12 @@ jobs:
           PROMPT_EOF
           )
           else
-            ISSUE_NUM="${{ needs.classify.outputs.issue_number }}"
-            ISSUE_TYPE="${{ needs.classify.outputs.issue_type }}"
-            ISSUE_TITLE_INPUT="${{ needs.classify.outputs.issue_title }}"
+            ISSUE_NUMBER="$CLASSIFY_ISSUE_NUMBER"
+            ISSUE_TYPE="$CLASSIFY_ISSUE_TYPE"
+            ISSUE_TITLE="$CLASSIFY_ISSUE_TITLE"
+            ISSUE_BODY="$ISSUE_BODY_INPUT"
 
-            IS_VISUAL="${{ needs.classify.outputs.is_visual }}"
+            IS_VISUAL="$CLASSIFY_IS_VISUAL"
             VISUAL_HINT=""
             if [ "$IS_VISUAL" = "true" ]; then
               VISUAL_HINT="
@@ -423,12 +457,12 @@ jobs:
             fi
 
             PROMPT=$(cat <<PROMPT_EOF
-          You are resolving GitHub issue #${ISSUE_NUM}.
+          You are resolving GitHub issue #${ISSUE_NUMBER}.
 
           **Issue type:** ${ISSUE_TYPE}
-          **Title:** ${ISSUE_TITLE_INPUT}
+          **Title:** ${ISSUE_TITLE}
           **Body:**
-          ${ISSUE_BODY_INPUT}
+          ${ISSUE_BODY}
           ${VISUAL_HINT}
 
           --- AUTOFIX INSTRUCTIONS ---
@@ -482,19 +516,24 @@ jobs:
         if: steps.claude.outputs.status == 'success'
         id: pr
         env:
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
           BRANCH: ${{ steps.branch.outputs.branch }}
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
-          ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
-          SUMMARY: ${{ steps.claude.outputs.summary }}
-          FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
-          COMMITS: ${{ steps.claude.outputs.commits }}
-          TEST_RESULT: ${{ steps.claude.outputs.test_result }}
+          CLASSIFY_ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
+          CLASSIFY_ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
+          CLASSIFY_ISSUE_TITLE: ${{ needs.classify.outputs.issue_title }}
+          CLAUDE_SUMMARY: ${{ steps.claude.outputs.summary }}
+          CLAUDE_FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
+          CLAUDE_COMMITS: ${{ steps.claude.outputs.commits }}
+          CLAUDE_TEST_RESULT: ${{ steps.claude.outputs.test_result }}
+          PARENT_REPO: ${{ github.repository }}
         run: |
-          IS_REVISION="${{ github.event.inputs.pr_number }}"
+          IS_REVISION="$INPUT_PR_NUMBER"
 
           if [ -n "$IS_REVISION" ]; then
-            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+            # Revision mode: push new commits to existing branch
+            PR_NUMBER="$INPUT_PR_NUMBER"
             PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+            PARENT_PR_URL=$(gh pr view "$PR_NUMBER" --json url -q '.url')
 
             COMMIT_COUNT=$(git log origin/${PR_BRANCH}..HEAD --oneline | wc -l | xargs)
             if [ "$COMMIT_COUNT" -eq 0 ]; then
@@ -504,11 +543,18 @@ jobs:
             fi
 
             git push origin "$PR_BRANCH"
-            echo "pr_url=$(gh pr view "$PR_NUMBER" --json url -q '.url')" >> "$GITHUB_OUTPUT"
+            echo "pr_url=${PARENT_PR_URL}" >> "$GITHUB_OUTPUT"
             echo "pr_created=true" >> "$GITHUB_OUTPUT"
             echo "is_revision=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          ISSUE_NUMBER="$CLASSIFY_ISSUE_NUMBER"
+          ISSUE_TYPE="$CLASSIFY_ISSUE_TYPE"
+          SUMMARY="$CLAUDE_SUMMARY"
+          FILES_CHANGED="$CLAUDE_FILES_CHANGED"
+          COMMITS="$CLAUDE_COMMITS"
+          TEST_RESULT="$CLAUDE_TEST_RESULT"
 
           COMMIT_COUNT=$(git log main..HEAD --oneline | wc -l | xargs)
           if [ "$COMMIT_COUNT" -eq 0 ]; then
@@ -532,7 +578,7 @@ jobs:
 
           ${SUMMARY}
 
-          Fixes #${ISSUE_NUM}
+          Fixes #${ISSUE_NUMBER}
 
           ## Details
 
@@ -560,13 +606,13 @@ jobs:
       - name: Comment success on issue
         if: github.event.inputs.pr_number == '' && steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
           PR_URL: ${{ steps.pr.outputs.pr_url }}
           SUMMARY: ${{ steps.claude.outputs.summary }}
           FILES_CHANGED: ${{ steps.claude.outputs.files_changed }}
           COMMITS: ${{ steps.claude.outputs.commits }}
           TEST_RESULT: ${{ steps.claude.outputs.test_result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           COMMENT=$(cat <<COMMENT_EOF
           ## Autofix — PR Created
@@ -577,22 +623,22 @@ jobs:
           ${SUMMARY}
 
           ---
-          *Automated by gg:autofix | Workflow run: ${RUN_URL}*
+          *Automated by gg:autofix | Workflow run: ${WORKFLOW_URL}*
           COMMENT_EOF
           )
 
-          gh issue comment "$ISSUE_NUM" --body "$COMMENT"
-          gh issue edit "$ISSUE_NUM" --add-label "autofix-success"
+          gh issue comment "$ISSUE_NUMBER" --body "$COMMENT"
+          gh issue edit "$ISSUE_NUMBER" --add-label "autofix-success"
 
       - name: Comment failure on issue
         if: github.event.inputs.pr_number == '' && (steps.claude.outputs.status != 'success' || (steps.pr.outputs.pr_created == 'false' && steps.claude.outputs.status == 'success'))
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number }}
-          ISSUE_TITLE_INPUT: ${{ needs.classify.outputs.issue_title }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
+          ISSUE_TITLE: ${{ needs.classify.outputs.issue_title }}
           ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
           SUMMARY: ${{ steps.claude.outputs.summary }}
           ERROR_MSG: ${{ steps.claude.outputs.error }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           ATTEMPTED=""
           if [ -f /tmp/claude_output.txt ]; then
@@ -602,7 +648,7 @@ jobs:
           COMMENT=$(cat <<COMMENT_EOF
           ## Autofix Report — Failed
 
-          **Issue:** #${ISSUE_NUM} — ${ISSUE_TITLE_INPUT}
+          **Issue:** #${ISSUE_NUMBER} — ${ISSUE_TITLE}
           **Type:** ${ISSUE_TYPE}
           **Model:** ${ANTHROPIC_MODEL}
 
@@ -622,12 +668,12 @@ jobs:
           - Run \`/autofix model=<model-id>\` to try with a different model
 
           ---
-          *Workflow run: ${RUN_URL} | Retry: \`/autofix retry\`*
+          *Workflow run: ${WORKFLOW_URL} | Retry: \`/autofix retry\`*
           COMMENT_EOF
           )
 
-          gh issue comment "$ISSUE_NUM" --body "$COMMENT"
-          gh issue edit "$ISSUE_NUM" --add-label "autofix-failed"
+          gh issue comment "$ISSUE_NUMBER" --body "$COMMENT"
+          gh issue edit "$ISSUE_NUMBER" --add-label "autofix-failed"
           exit 1
 
       - name: Comment revision summary on PR
@@ -639,7 +685,7 @@ jobs:
           COMMITS: ${{ steps.claude.outputs.commits }}
           TEST_RESULT: ${{ steps.claude.outputs.test_result }}
           REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           COMMENT=$(cat <<COMMENT_EOF
           ## Autofix Revision — Round ${REVISION_ROUND}
@@ -649,7 +695,7 @@ jobs:
           ${SUMMARY}
 
           ---
-          *Automated by gg:autofix | Workflow run: ${RUN_URL}*
+          *Automated by gg:autofix | Workflow run: ${WORKFLOW_URL}*
           COMMENT_EOF
           )
 
@@ -662,7 +708,7 @@ jobs:
           SUMMARY: ${{ steps.claude.outputs.summary }}
           ERROR_MSG: ${{ steps.claude.outputs.error }}
           REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           ATTEMPTED=""
           if [ -f /tmp/claude_output.txt ]; then
@@ -688,26 +734,105 @@ jobs:
           - Consider making the changes manually
 
           ---
-          *Workflow run: ${RUN_URL} | Retry: \`/autofix retry\`*
+          *Workflow run: ${WORKFLOW_URL} | Retry: \`/autofix retry\`*
           COMMENT_EOF
           )
 
           gh pr comment "$PR_NUMBER" --body "$COMMENT"
 
-      - name: Comment VQA screenshots on PR
+      - name: Upload VQA screenshots to branch
+        id: vqa-upload
         if: steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
-          PR_URL: ${{ steps.pr.outputs.pr_url }}
-          IS_REVISION: ${{ steps.pr.outputs.is_revision }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
         run: |
           HAS_BEFORE=$(ls /tmp/vqa-before/*.png 2>/dev/null | head -1)
           HAS_AFTER=$(ls /tmp/vqa-after/*.png 2>/dev/null | head -1)
 
           if [ -z "$HAS_BEFORE" ] && [ -z "$HAS_AFTER" ]; then
             echo "No VQA screenshots found. Skipping."
+            echo "has_screenshots=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+
+          echo "has_screenshots=true" >> "$GITHUB_OUTPUT"
+
+          BRANCH="_vqa-screenshots"
+          CLONE_URL="${SERVER_URL}/${REPO}.git"
+          AUTH_HEADER="Authorization: Bearer ${GH_TOKEN}"
+
+          WORK_DIR=$(mktemp -d)
+          cd "$WORK_DIR"
+
+          # Clone existing branch or create orphan — use extraHeader to avoid leaking token in .git/config
+          if git -c "http.extraHeader=$AUTH_HEADER" clone --depth 1 --single-branch --branch "$BRANCH" "$CLONE_URL" repo 2>/dev/null; then
+            cd repo
+          else
+            mkdir repo && cd repo
+            git init
+            git checkout --orphan "$BRANCH"
+            git remote add origin "$CLONE_URL"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Prune old screenshot directories (keep last 20 runs)
+          DIRS=$(ls -1d */ 2>/dev/null | sort -n -r | tail -n +21)
+          if [ -n "$DIRS" ]; then
+            echo "$DIRS" | xargs rm -rf
+            git add -A
+            git commit -m "Prune old VQA screenshots" || true
+          fi
+
+          # Copy screenshots into run-specific directory
+          mkdir -p "${RUN_ID}/vqa-before" "${RUN_ID}/vqa-after"
+          cp /tmp/vqa-before/*.png "${RUN_ID}/vqa-before/" 2>/dev/null || true
+          cp /tmp/vqa-after/*.png "${RUN_ID}/vqa-after/" 2>/dev/null || true
+
+          git add .
+          git commit -m "VQA screenshots for run ${RUN_ID}" || { echo "Nothing to commit"; exit 0; }
+
+          # Push with retry for concurrent runs
+          git_auth() { git -c "http.extraHeader=${AUTH_HEADER}" "$@"; }
+          PUSH_OK=false
+          for ATTEMPT in 1 2 3; do
+            if git_auth push origin "$BRANCH" 2>/dev/null; then
+              PUSH_OK=true
+              break
+            fi
+            echo "Push attempt ${ATTEMPT} failed, rebasing and retrying..."
+            git_auth pull --rebase origin "$BRANCH" 2>/dev/null || true
+          done
+
+          if [ "$PUSH_OK" != "true" ]; then
+            echo "::warning::Failed to push VQA screenshots after 3 attempts"
+            echo "has_screenshots=false" >> "$GITHUB_OUTPUT"
+            cd /
+            rm -rf "$WORK_DIR"
+            exit 0
+          fi
+
+          # Build raw URL base
+          echo "raw_url_base=${SERVER_URL}/${REPO}/raw/${BRANCH}/${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+          cd /
+          rm -rf "$WORK_DIR"
+
+      - name: Comment VQA screenshots on PR
+        if: steps.vqa-upload.outputs.has_screenshots == 'true' && steps.pr.outputs.pr_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          IS_REVISION: ${{ steps.pr.outputs.is_revision }}
+          RAW_URL_BASE: ${{ steps.vqa-upload.outputs.raw_url_base }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          HAS_BEFORE=$(ls /tmp/vqa-before/*.png 2>/dev/null | head -1)
+          HAS_AFTER=$(ls /tmp/vqa-after/*.png 2>/dev/null | head -1)
 
           PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
 
@@ -722,10 +847,13 @@ jobs:
               BEFORE_IMG="/tmp/vqa-before/${BASENAME}"
               LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
 
+              AFTER_URL="${RAW_URL_BASE}/vqa-after/${BASENAME}"
+
               if [ -f "$BEFORE_IMG" ]; then
-                COMMENT+="| ${LABEL} | before | after |\n"
+                BEFORE_URL="${RAW_URL_BASE}/vqa-before/${BASENAME}"
+                COMMENT+="| ${LABEL} | ![before](${BEFORE_URL}) | ![after](${AFTER_URL}) |\n"
               else
-                COMMENT+="| ${LABEL} | *(no before)* | after |\n"
+                COMMENT+="| ${LABEL} | *(no before)* | ![after](${AFTER_URL}) |\n"
               fi
             done
           elif [ -n "$HAS_AFTER" ]; then
@@ -733,11 +861,12 @@ jobs:
             for AFTER_IMG in /tmp/vqa-after/*.png; do
               BASENAME=$(basename "$AFTER_IMG")
               LABEL=$(echo "$BASENAME" | sed 's/\.png$//' | tr '-' ' ')
-              COMMENT+="- ${LABEL}\n"
+              AFTER_URL="${RAW_URL_BASE}/vqa-after/${BASENAME}"
+              COMMENT+="- ${LABEL}: ![${LABEL}](${AFTER_URL})\n"
             done
           fi
 
-          COMMENT+="\n---\n*Screenshots available in [workflow artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
+          COMMENT+="\n---\n*Screenshots also available in [workflow artifacts](${WORKFLOW_URL})*"
 
           echo -e "$COMMENT" | gh pr comment "$PR_NUMBER" --body-file -
 
@@ -766,6 +895,6 @@ jobs:
       - name: Clean up running label
         if: always() && github.event.inputs.pr_number == ''
         env:
-          ISSUE_NUM: ${{ needs.classify.outputs.issue_number || github.event.issue.number || github.event.inputs.issue_number }}
+          ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number || github.event.issue.number || github.event.inputs.issue_number }}
         run: |
-          gh issue edit "$ISSUE_NUM" --remove-label "autofix-running" 2>/dev/null || true
+          gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
