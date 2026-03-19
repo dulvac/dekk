@@ -485,6 +485,7 @@ jobs:
             --max-turns "$CLAUDE_MAX_TURNS" \
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(*),NotebookEdit,Agent,mcp__context7__*,mcp__playwright__*" \
             --effort high \
+            --verbose \
             --output-format stream-json \
             "$PROMPT" > /tmp/claude_stream.jsonl 2>/tmp/claude_stderr.txt
           CLAUDE_EXIT=$?
