@@ -302,18 +302,56 @@ jobs:
 
       - name: Check for existing autofix PR
         if: github.event.inputs.pr_number == ''
+        id: check-existing
         env:
+          GH_TOKEN: ${{ secrets.AUTOFIX_PAT }}
           ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
+          REPO: ${{ github.repository }}
         run: |
-          EXISTING_PR=$(gh pr list --label "autofix" --json url,title --jq ".[] | select(.title | contains(\"#${ISSUE_NUMBER}\")) | .url" | head -1)
-          if [ -n "$EXISTING_PR" ]; then
-            gh issue comment "$ISSUE_NUMBER" --body "An autofix PR already exists: ${EXISTING_PR}. Close it first, then run \`/autofix retry\`."
-            gh issue edit "$ISSUE_NUMBER" --remove-label "autofix-running" 2>/dev/null || true
-            exit 1
+          # Search by branch name pattern (handles both fix/ and feat/ prefixes)
+          EXISTING_PR_NUMBER=$(gh pr list --label "autofix" --state open --json number,headRefName \
+            -q ".[] | select(.headRefName | test(\"issue-${ISSUE_NUMBER}-\")) | .number" | head -1)
+
+          if [ -z "$EXISTING_PR_NUMBER" ]; then
+            echo "No existing autofix PR found."
+            echo "existing_pr_number=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
+          echo "Found existing autofix PR #${EXISTING_PR_NUMBER}. Entering revision mode."
+          echo "existing_pr_number=${EXISTING_PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+          # Checkout the existing PR branch
+          PR_BRANCH=$(gh pr view "$EXISTING_PR_NUMBER" --json headRefName -q '.headRefName')
+          git checkout "$PR_BRANCH"
+          git pull origin "$PR_BRANCH"
+
+          # Gather review context (same as explicit revision mode)
+          gh pr diff "$EXISTING_PR_NUMBER" > /tmp/pr_diff.txt
+
+          gh api "repos/${REPO}/pulls/${EXISTING_PR_NUMBER}/comments" \
+            --jq '.[] | "File: \(.path):\(.line // .original_line)\nComment: \(.body)\n---"' \
+            > /tmp/review_comments.txt 2>/dev/null || echo "No inline comments." > /tmp/review_comments.txt
+
+          gh pr view "$EXISTING_PR_NUMBER" --comments --json comments \
+            --jq '.comments[] | "Author: \(.author.login)\n\(.body)\n---"' \
+            > /tmp/pr_comments.txt 2>/dev/null || echo "No PR comments." > /tmp/pr_comments.txt
+
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --json title -q '.title' 2>/dev/null || echo "Unknown")
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUMBER" --json body -q '.body' 2>/dev/null || echo "")
+          echo "$ISSUE_TITLE" > /tmp/original_issue_title.txt
+          echo "$ISSUE_BODY" > /tmp/original_issue_body.txt
+
+          # Track revision rounds
+          MAX_REVISIONS=$(grep -oE 'gg:autofix-max-revisions=[0-9]+' DEVELOPMENT.md | grep -oE '[0-9]+' || echo "5")
+          REVISION_ROUND=$(gh pr view "$EXISTING_PR_NUMBER" --comments --json comments \
+            --jq '[.comments[] | select(.body | startswith("## Autofix Revision"))] | length')
+          REVISION_ROUND=$((REVISION_ROUND + 1))
+          echo "revision_round=${REVISION_ROUND}" >> "$GITHUB_OUTPUT"
+          echo "max_revisions=${MAX_REVISIONS}" >> "$GITHUB_OUTPUT"
+
       - name: Create feature branch
-        if: github.event.inputs.pr_number == ''
+        if: github.event.inputs.pr_number == '' && steps.check-existing.outputs.existing_pr_number == ''
         id: branch
         env:
           ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
@@ -391,14 +429,14 @@ jobs:
         env:
           ISSUE_BODY_INPUT: ${{ needs.classify.outputs.issue_body }}
           CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
-          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number || steps.check-existing.outputs.existing_pr_number }}
+          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number || needs.classify.outputs.issue_number }}
           CLASSIFY_ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
           CLASSIFY_ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
           CLASSIFY_ISSUE_TITLE: ${{ needs.classify.outputs.issue_title }}
           CLASSIFY_IS_VISUAL: ${{ needs.classify.outputs.is_visual }}
-          REVIEW_REVISION_ROUND: ${{ steps.review-context.outputs.revision_round }}
-          REVIEW_MAX_REVISIONS: ${{ steps.review-context.outputs.max_revisions }}
+          REVIEW_REVISION_ROUND: ${{ steps.review-context.outputs.revision_round || steps.check-existing.outputs.revision_round }}
+          REVIEW_MAX_REVISIONS: ${{ steps.review-context.outputs.max_revisions || steps.check-existing.outputs.max_revisions }}
         run: |
           AUTOFIX_INSTRUCTIONS=$(cat .claude/autofix-instructions.md 2>/dev/null || echo "No autofix instructions found.")
 
@@ -544,7 +582,8 @@ jobs:
         if: steps.claude.outputs.status == 'success'
         id: pr
         env:
-          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number || steps.check-existing.outputs.existing_pr_number }}
+          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number || needs.classify.outputs.issue_number }}
           BRANCH: ${{ steps.branch.outputs.branch }}
           CLASSIFY_ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
           CLASSIFY_ISSUE_TYPE: ${{ needs.classify.outputs.issue_type }}
@@ -632,7 +671,7 @@ jobs:
           gh pr edit "$PR_NUMBER" --add-label "autofix"
 
       - name: Comment success on issue
-        if: github.event.inputs.pr_number == '' && steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
+        if: github.event.inputs.pr_number == '' && steps.check-existing.outputs.existing_pr_number == '' && steps.claude.outputs.status == 'success' && steps.pr.outputs.pr_created == 'true'
         env:
           ISSUE_NUMBER: ${{ needs.classify.outputs.issue_number }}
           PR_URL: ${{ steps.pr.outputs.pr_url }}
