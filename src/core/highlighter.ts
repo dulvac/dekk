@@ -1,4 +1,5 @@
-import { createHighlighter, type Highlighter } from 'shiki'
+import { createHighlighterCore, type HighlighterCore } from '@shikijs/core'
+import { createJavaScriptRegexEngine } from '@shikijs/engine-javascript'
 import {
   transformerNotationDiff,
   transformerNotationHighlight,
@@ -7,20 +8,42 @@ import {
   transformerMetaHighlight,
 } from '@shikijs/transformers'
 
-let highlighterPromise: Promise<Highlighter> | null = null
+let highlighterPromise: Promise<HighlighterCore> | null = null
 
 const COMMON_LANGS = [
-  'typescript', 'javascript', 'tsx', 'jsx', 'python', 'rust', 'go',
-  'java', 'c', 'cpp', 'csharp', 'ruby', 'swift', 'kotlin', 'bash',
-  'shell', 'json', 'yaml', 'toml', 'html', 'css', 'sql', 'graphql',
-  'markdown', 'dockerfile', 'plaintext',
+  import('@shikijs/langs/typescript'),
+  import('@shikijs/langs/javascript'),
+  import('@shikijs/langs/tsx'),
+  import('@shikijs/langs/jsx'),
+  import('@shikijs/langs/python'),
+  import('@shikijs/langs/rust'),
+  import('@shikijs/langs/go'),
+  import('@shikijs/langs/java'),
+  import('@shikijs/langs/c'),
+  import('@shikijs/langs/cpp'),
+  import('@shikijs/langs/csharp'),
+  import('@shikijs/langs/ruby'),
+  import('@shikijs/langs/swift'),
+  import('@shikijs/langs/kotlin'),
+  import('@shikijs/langs/bash'),
+  import('@shikijs/langs/shell'),
+  import('@shikijs/langs/json'),
+  import('@shikijs/langs/yaml'),
+  import('@shikijs/langs/toml'),
+  import('@shikijs/langs/html'),
+  import('@shikijs/langs/css'),
+  import('@shikijs/langs/sql'),
+  import('@shikijs/langs/graphql'),
+  import('@shikijs/langs/markdown'),
+  import('@shikijs/langs/dockerfile'),
 ]
 
-function getHighlighter(): Promise<Highlighter> {
+function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ['vitesse-dark'],
+    highlighterPromise = createHighlighterCore({
+      themes: [import('@shikijs/themes/vitesse-dark')],
       langs: COMMON_LANGS,
+      engine: createJavaScriptRegexEngine(),
     })
   }
   return highlighterPromise
