@@ -163,10 +163,36 @@ jobs:
             echo "--- END AUTOREVIEW INSTRUCTIONS ---"
           } > /tmp/claude_prompt.txt
 
-          # Build Claude CLI arguments
-          CLAUDE_ARGS="--print --effort high"
+          # Stream Claude output to both GH Actions log (formatted) and raw JSONL file
+          set +e
+          claude --print \
+            --effort high \
+            --verbose \
+            --output-format stream-json \
+            "$(cat /tmp/claude_prompt.txt)" 2>/tmp/claude_stderr.txt \
+            | tee /tmp/claude_stream.jsonl \
+            | jq --unbuffered -r '
+              if .type == "assistant" then
+                (.message.content[] |
+                  if .type == "text" then "\n" + .text
+                  elif .type == "tool_use" then "\n[Tool: " + .name + "]\n" + (.input | tostring | .[0:1000])
+                  else empty end)
+              elif .type == "result" then
+                "\n[Result: " + (.result.stop_reason // "unknown") + "]"
+              else empty end
+            '
+          CLAUDE_EXIT=${PIPESTATUS[0]}
+          set -e
 
-          RESULT=$(claude $CLAUDE_ARGS < /tmp/claude_prompt.txt)
+          # Extract all assistant text messages from the stream
+          RESULT=$(jq -r '
+            select(.type == "assistant")
+            | .message.content[]
+            | select(.type == "text")
+            | .text
+          ' /tmp/claude_stream.jsonl 2>/dev/null || echo "")
+
+          echo "$RESULT" > /tmp/claude_output.txt
 
           # Extract structured result
           REVIEW_JSON=$(echo "$RESULT" | sed -n '/AUTOREVIEW_RESULT_START/,/AUTOREVIEW_RESULT_END/p' | grep -v 'AUTOREVIEW_RESULT_START\|AUTOREVIEW_RESULT_END')
@@ -255,6 +281,19 @@ jobs:
           ${FINDINGS_TEXT}"
               }
           fi
+
+      - name: Upload Claude logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-logs
+          path: |
+            /tmp/claude_prompt.txt
+            /tmp/claude_stream.jsonl
+            /tmp/claude_stderr.txt
+            /tmp/claude_output.txt
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Update labels
         if: always() && steps.draft-check.outputs.skip != 'true'
