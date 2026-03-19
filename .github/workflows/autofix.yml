@@ -350,6 +350,13 @@ jobs:
           echo "revision_round=${REVISION_ROUND}" >> "$GITHUB_OUTPUT"
           echo "max_revisions=${MAX_REVISIONS}" >> "$GITHUB_OUTPUT"
 
+          REVISION_WARNING=""
+          if [ "$REVISION_ROUND" -ge "$MAX_REVISIONS" ]; then
+            REVISION_WARNING="WARNING: This is revision round ${REVISION_ROUND}, at or beyond the configured limit of ${MAX_REVISIONS}. Consider whether this PR needs human intervention."
+            gh pr comment "$EXISTING_PR_NUMBER" --body "> **Warning:** This is revision round ${REVISION_ROUND}, at or beyond the configured limit of ${MAX_REVISIONS}. Consider whether this PR needs human intervention."
+          fi
+          echo "$REVISION_WARNING" > /tmp/revision_warning.txt
+
       - name: Create feature branch
         if: github.event.inputs.pr_number == '' && steps.check-existing.outputs.existing_pr_number == ''
         id: branch
