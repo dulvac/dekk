@@ -1,4 +1,7 @@
 <!-- gg:convention=conventional -->
+<!-- gg:autoreview-model=us.anthropic.claude-opus-4-6-v1 -->
+<!-- gg:autoreview-effort=high -->
+<!-- gg:autoreview-timeout=15 -->
 <!-- gg:base-branch=main -->
 <!-- gg:autofix-scope=all -->
 <!-- gg:autofix-model=us.anthropic.claude-opus-4-6-v1 -->
@@ -113,3 +116,21 @@ gh pr create --base main --title "feat: description" --body "Summary of changes"
 ```bash
 gh pr status
 ```
+
+## Code Review Guidelines
+
+<!-- gg:review-guidelines=true -->
+
+### Review Focus Areas
+- **Correctness** — Does the code do what the PR claims? Edge cases handled?
+- **Security** — OWASP top 10, input validation at boundaries, auth checks
+- **Performance** — Obvious inefficiencies, N+1 queries, unnecessary allocations
+- **Conventions** — Follows project conventions from this document
+- **Test coverage** — Changed/added code has appropriate tests
+- **Error handling** — Failures handled gracefully at system boundaries
+- **Readability** — Code is clear without excessive comments
+
+### Review Principles
+- Only flag issues that matter. No nitpicking style preferences.
+- Suggest fixes, don't just point out problems.
+- Acknowledge genuinely clever solutions.

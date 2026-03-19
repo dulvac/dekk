@@ -1,0 +1,270 @@
+name: Autoreview
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: autoreview-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.event.label.name == 'autoreview' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLAUDE_CODE_USE_BEDROCK: "1"
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ANTHROPIC_MODEL: 'us.anthropic.claude-opus-4-6-v1'
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
+    steps:
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ github.event.inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          echo "number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check permissions
+        env:
+          SENDER: ${{ github.event.sender.login || github.actor }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Allow GitHub Actions bot (triggers from other workflows like autofix)
+          if [[ "$SENDER" == "github-actions[bot]" || "$SENDER" == "github-actions" ]]; then
+            echo "Sender is github-actions bot — trusted, skipping permission check."
+            exit 0
+          fi
+
+          PERM=$(gh api "repos/${REPO}/collaborators/${SENDER}/permission" --jq '.permission')
+          if [[ "$PERM" != "admin" && "$PERM" != "maintain" && "$PERM" != "write" ]]; then
+            echo "::error::User ${SENDER} does not have write access (permission: ${PERM}). Autoreview requires write access."
+            exit 1
+          fi
+
+      - name: Check if PR is a draft
+        id: draft-check
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          IS_DRAFT=$(gh pr view "$PR_NUMBER" --json isDraft --jq '.isDraft')
+          if [ "$IS_DRAFT" = "true" ]; then
+            gh pr comment "$PR_NUMBER" --body "Skipping autoreview — PR is in draft state. Add the \`autoreview\` label again when ready for review."
+            gh pr edit "$PR_NUMBER" --remove-label "autoreview" 2>/dev/null || true
+            gh pr edit "$PR_NUMBER" --remove-label "autoreview-running" 2>/dev/null || true
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Add autoreview-running label
+        if: steps.draft-check.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr edit "$PR_NUMBER" --add-label "autoreview-running" 2>/dev/null || true
+          gh pr edit "$PR_NUMBER" --remove-label "autoreview" 2>/dev/null || true
+
+      - name: Gather PR context
+        if: steps.draft-check.outputs.skip != 'true'
+        id: context
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Get PR metadata
+          PR_JSON=$(gh pr view "$PR_NUMBER" --json title,body,headRefName,baseRefName,additions,deletions,files)
+          PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
+          echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
+
+          DELIM="PR_BODY_DELIM_$(date +%s%N)"
+          {
+            echo "pr_body<<${DELIM}"
+            echo "$PR_JSON" | jq -r '.body'
+            echo "${DELIM}"
+          } >> "$GITHUB_OUTPUT"
+
+          # Get diff
+          gh pr diff "$PR_NUMBER" > /tmp/pr_diff.txt
+
+          # Truncate if too large (100K chars)
+          if [ $(wc -c < /tmp/pr_diff.txt) -gt 100000 ]; then
+            head -c 100000 /tmp/pr_diff.txt > /tmp/pr_diff_truncated.txt
+            echo -e "\n\n--- DIFF TRUNCATED (exceeded 100K characters) ---\nFocus review on the files shown above." >> /tmp/pr_diff_truncated.txt
+            mv /tmp/pr_diff_truncated.txt /tmp/pr_diff.txt
+          fi
+
+          # Get file list
+          echo "$PR_JSON" | jq -r '.files[].path' > /tmp/changed_files.txt
+
+          # Get linked issues from PR body
+          echo "$PR_JSON" | jq -r '.body' | grep -oE '#[0-9]+' | sort -u > /tmp/linked_issues.txt || true
+
+      - name: Mask secrets
+        if: steps.draft-check.outputs.skip != 'true'
+        run: |
+          echo "::add-mask::${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}"
+
+      - name: Install Claude Code
+        if: steps.draft-check.outputs.skip != 'true'
+        run: npm install -g @anthropic-ai/claude-code@latest
+
+      - name: Run Claude Code review
+        if: steps.draft-check.outputs.skip != 'true'
+        id: claude
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          PR_TITLE: ${{ steps.context.outputs.pr_title }}
+          PR_BODY: ${{ steps.context.outputs.pr_body }}
+        run: |
+          AUTOREVIEW_INSTRUCTIONS=$(cat .claude/autoreview-instructions.md 2>/dev/null || echo "No autoreview instructions found.")
+
+          # Write prompt to file to avoid shell variable size limits and special char issues
+          {
+            echo "Review PR #${PR_NUMBER}: ${PR_TITLE}"
+            echo ""
+            echo "**PR description:**"
+            echo "$PR_BODY"
+            echo ""
+            echo "**Changed files:**"
+            cat /tmp/changed_files.txt
+            echo ""
+            echo "**Linked issues:**"
+            cat /tmp/linked_issues.txt 2>/dev/null || echo "None"
+            echo ""
+            echo "**Diff:**"
+            cat /tmp/pr_diff.txt
+            echo ""
+            echo "--- AUTOREVIEW INSTRUCTIONS ---"
+            echo "$AUTOREVIEW_INSTRUCTIONS"
+            echo "--- END AUTOREVIEW INSTRUCTIONS ---"
+          } > /tmp/claude_prompt.txt
+
+          # Build Claude CLI arguments
+          CLAUDE_ARGS="--print --effort high"
+
+          RESULT=$(claude $CLAUDE_ARGS < /tmp/claude_prompt.txt)
+
+          # Extract structured result
+          REVIEW_JSON=$(echo "$RESULT" | sed -n '/AUTOREVIEW_RESULT_START/,/AUTOREVIEW_RESULT_END/p' | grep -v 'AUTOREVIEW_RESULT_START\|AUTOREVIEW_RESULT_END')
+
+          if [ -z "$REVIEW_JSON" ]; then
+            echo "::error::Claude did not produce a structured AUTOREVIEW_RESULT block."
+            echo '{"verdict":"comment","summary":"Review completed but could not produce structured output. Please review manually.","findings":[]}' > /tmp/review_result.json
+          else
+            echo "$REVIEW_JSON" > /tmp/review_result.json
+          fi
+
+          # Validate JSON
+          jq . /tmp/review_result.json > /dev/null 2>&1 || {
+            echo "::error::Invalid JSON in review result."
+            echo '{"verdict":"comment","summary":"Review completed but produced invalid output. Please review manually.","findings":[]}' > /tmp/review_result.json
+          }
+
+      - name: Post review to GitHub
+        if: steps.draft-check.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          VERDICT=$(jq -r '.verdict' /tmp/review_result.json)
+          SUMMARY=$(jq -r '.summary' /tmp/review_result.json)
+          FINDINGS_COUNT=$(jq '.findings | length' /tmp/review_result.json)
+
+          # Determine review event type
+          NON_PRAISE_COUNT=$(jq '[.findings[] | select(.severity != "praise")] | length' /tmp/review_result.json)
+          HAS_CRITICAL=$(jq '[.findings[] | select(.severity == "critical")] | length' /tmp/review_result.json)
+
+          if [ "$FINDINGS_COUNT" -eq 0 ]; then
+            # No findings at all — post a simple approval comment
+            gh pr comment "$PR_NUMBER" --body "**Automated Review Complete**
+
+          $SUMMARY
+
+          No issues found. The changes look good."
+          else
+            # Has findings — determine event type
+            if [ "$HAS_CRITICAL" -gt 0 ]; then
+              EVENT="REQUEST_CHANGES"
+            elif [ "$NON_PRAISE_COUNT" -eq 0 ]; then
+              EVENT="APPROVE"
+            else
+              EVENT="COMMENT"
+            fi
+
+            # Build inline comments array from findings
+            jq '
+              .findings | map({
+                path: .file,
+                line: .line,
+                side: "RIGHT",
+                body: (
+                  if .severity == "praise" then "**[praise]** " + .body
+                  elif .severity == "critical" then "**[critical]** " + .body
+                  elif .severity == "warning" then "**[warning]** " + .body
+                  else "**[suggestion]** " + .body
+                  end
+                )
+              })
+            ' /tmp/review_result.json > /tmp/inline_comments.json
+
+            # Construct the review payload
+            REVIEW_BODY=$(printf '**Automated Review**\n\n%s' "$SUMMARY")
+            jq -n \
+              --arg body "$REVIEW_BODY" \
+              --arg event "$EVENT" \
+              --slurpfile comments /tmp/inline_comments.json \
+              '{body: $body, event: $event, comments: $comments[0]}' \
+              > /tmp/review_payload.json
+
+            # Post the review
+            gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+              --method POST \
+              --input /tmp/review_payload.json || {
+                # If review posting fails (e.g., invalid line positions), fall back to a summary comment
+                echo "::warning::Failed to post PR review with inline comments. Falling back to a summary comment."
+                FINDINGS_TEXT=$(jq -r '.findings[] | "- **[\(.severity)]** `\(.file):\(.line)` — \(.body)"' /tmp/review_result.json)
+                gh pr comment "$PR_NUMBER" --body "**Automated Review**
+
+          ${SUMMARY}
+
+          **Findings:**
+          ${FINDINGS_TEXT}"
+              }
+          fi
+
+      - name: Update labels
+        if: always() && steps.draft-check.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            gh pr edit "$PR_NUMBER" --add-label "autoreview-complete" 2>/dev/null || true
+          else
+            gh pr edit "$PR_NUMBER" --add-label "autoreview-failed" 2>/dev/null || true
+            gh pr comment "$PR_NUMBER" --body "Automated review failed. Please review manually. Check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details." 2>/dev/null || true
+          fi
+          gh pr edit "$PR_NUMBER" --remove-label "autoreview-running" 2>/dev/null || true
