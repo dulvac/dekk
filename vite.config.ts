@@ -15,7 +15,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor-mermaid': ['mermaid'],
-          'vendor-shiki': ['@shikijs/core', '@shikijs/engine-javascript', '@shikijs/transformers'],
+          'vendor-shiki': ['shiki', '@shikijs/transformers'],
           'vendor-codemirror': ['@uiw/react-codemirror', '@codemirror/lang-markdown', '@codemirror/view'],
         },
       },
